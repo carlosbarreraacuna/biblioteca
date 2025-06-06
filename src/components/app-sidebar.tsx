@@ -1,6 +1,6 @@
 "use client"
 
-import { BookOpen, Home, Users, Settings, FileText, BarChart3, Search } from "lucide-react"
+import { BookOpen, Home, Users, Settings, FileText, BarChart3, Search, Shield } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 
@@ -37,6 +37,11 @@ const menuItems = [
     title: "Usuarios",
     url: "/dashboard/usuarios",
     icon: Users,
+  },
+  {
+    title: "Auditoría",
+    url: "/dashboard/auditoria",
+    icon: Shield,
   },
   {
     title: "Reportes",
