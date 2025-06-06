@@ -10,39 +10,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, BookOpen, Lock, User } from "lucide-react"
+import { useAuth } from '@/app/context/AuthContext';
+import { login } from '@/app/types/auth';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const { setToken } = useAuth();
   const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
-    // Simulación de autenticación
     try {
-      // Aquí implementarías la lógica real de autenticación
-      if (email === "admin@biblioteca.com" && password === "admin123") {
-        // Guardar token o estado de autenticación
-        localStorage.setItem("isAuthenticated", "true")
-        localStorage.setItem("user", JSON.stringify({ email, name: "Administrador" }))
-
-        // Redireccionar al dashboard
-        router.push("/dashboard")
-      } else {
-        setError("Credenciales incorrectas. Intenta con admin@biblioteca.com / admin123")
-      }
-    } catch (err) {
-      setError("Error al iniciar sesión. Intenta nuevamente.")
+      const res = await login(username, password);
+      setToken(res.data.token);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al iniciar sesión');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-4">
@@ -63,7 +57,7 @@ export default function LoginPage() {
             <CardDescription className="text-center">Ingresa tus credenciales para acceder al sistema</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
@@ -71,15 +65,15 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
+                <Label htmlFor="email">Usuario</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Usuario"
                     className="pl-10"
                     required
                   />
