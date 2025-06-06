@@ -1,15 +1,15 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, ArrowLeft, ArrowRight, Save } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Upload, ArrowLeft, ArrowRight, Save, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type DocumentType = "libro" | "libro-anillado" | "azs" | ""
 type Denomination = "MI" | "CG" | "J" | "R" | "H" | ""
@@ -36,7 +36,11 @@ const denominationLabels = {
 }
 
 export default function BibliotecaPage() {
-  const [step, setStep] = useState(1)
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
   const [documentData, setDocumentData] = useState<DocumentData>({
     type: "",
     denomination: "",
@@ -63,10 +67,62 @@ export default function BibliotecaPage() {
     setDocumentData((prev) => ({ ...prev, archivo: file }))
   }
 
-  const handleSave = () => {
-    console.log("Guardando documento:", documentData)
-    // Aquí implementarías la lógica para guardar en la base de datos
-    alert("Documento guardado exitosamente!")
+  const handleSave = async () => {
+    if (!documentData.archivo) {
+      setSaveError("Por favor selecciona un archivo PDF");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError("");
+
+    try {
+      // Crear FormData para enviar archivos
+      const formData = new FormData();
+      formData.append('tipo_documento', documentData.type);
+      formData.append('denominacion', documentData.denomination);
+      formData.append('denominacion_numerica', documentData.consecutivo);
+      formData.append('titulo', documentData.titulo);
+      formData.append('autor', documentData.autor);
+      formData.append('editorial', documentData.editorial || "");
+      formData.append('tomo', documentData.tomo || "");
+      formData.append('año', documentData.año);  // Enviar como string
+      formData.append('pais', documentData.pais);
+      formData.append('archivo', documentData.archivo);  // Nombre correcto
+
+      // Enviar datos a la API de Laravel
+      const token = localStorage.getItem("token")
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/bibliotecas`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 201) {
+        // Éxito: mostrar mensaje y redirigir
+        alert("Documento guardado exitosamente!");
+        router.push('/consultas');
+      } else {
+        setSaveError("Error inesperado al guardar el documento");
+      }
+    } catch (error: any) {
+      console.error("Error al guardar:", error);
+
+      if (error.response) {
+        // Error de validación del servidor
+        if (error.response.data.errors) {
+          const errors = error.response.data.errors;
+          const firstError = Object.values(errors)[0] as string[];
+          setSaveError(firstError[0] || "Error de validación");
+        } else {
+          setSaveError(error.response.data.message || "Error del servidor");
+        }
+      } else {
+        setSaveError("Error de conexión con el servidor");
+      }
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const canProceedToStep2 = documentData.type && documentData.denomination && documentData.consecutivo
@@ -85,9 +141,8 @@ export default function BibliotecaPage() {
         {[1, 2, 3].map((stepNumber) => (
           <div key={stepNumber} className="flex items-center">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                step >= stepNumber ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}
             >
               {stepNumber}
             </div>
@@ -95,6 +150,14 @@ export default function BibliotecaPage() {
           </div>
         ))}
       </div>
+
+      {/* Mensaje de error */}
+      {saveError && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{saveError}</span>
+        </div>
+      )}
 
       {/* Step 1: Document Type and Denomination */}
       {step === 1 && (
@@ -318,6 +381,9 @@ export default function BibliotecaPage() {
                 {documentData.archivo && (
                   <div className="mt-4 p-2 bg-green-50 rounded border border-green-200">
                     <p className="text-sm text-green-700">✓ Archivo seleccionado: {documentData.archivo.name}</p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Tamaño: {(documentData.archivo.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
                   </div>
                 )}
               </div>
@@ -329,10 +395,18 @@ export default function BibliotecaPage() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={!canSave}
+                disabled={!canSave || isSaving}
                 className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
               >
-                <Save className="h-4 w-4" /> Guardar Documento
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" /> Guardar Documento
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
