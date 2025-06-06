@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import api from "@/lib/axios"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,8 +21,8 @@ import { Search, Eye, Edit, Download, BookOpen, FileText } from "lucide-react"
 
 interface Document {
   id: string
-  codigo: string
-  tipo: "libro" | "libro-anillado" | "azs"
+  denominacion_numerica: string
+  tipo_documento: "libro" | "libro-anillado" | "azs"
   denominacion: "MI" | "CG" | "J" | "R" | "H"
   titulo: string
   autor: string
@@ -29,111 +30,11 @@ interface Document {
   tomo: string
   año: string
   pais: string
-  fechaRegistro: string
+  created_at: string
   archivo: string
 }
 
-// Datos de ejemplo
-const initialDocuments: Document[] = [
-  {
-    id: "1",
-    codigo: "MI0001",
-    tipo: "libro",
-    denominacion: "MI",
-    titulo: "Historia de la Institución Educativa",
-    autor: "Dr. Carlos Mendoza",
-    editorial: "Editorial Académica",
-    tomo: "1",
-    año: "2023",
-    pais: "Colombia",
-    fechaRegistro: "2024-01-15",
-    archivo: "historia_institucion.pdf",
-  },
-  {
-    id: "2",
-    codigo: "CG0025",
-    tipo: "libro-anillado",
-    denominacion: "CG",
-    titulo: "Manual de Procedimientos Administrativos",
-    autor: "María García López",
-    editorial: "",
-    tomo: "",
-    año: "2024",
-    pais: "Colombia",
-    fechaRegistro: "2024-02-20",
-    archivo: "manual_procedimientos.pdf",
-  },
-  {
-    id: "3",
-    codigo: "J0012",
-    tipo: "libro",
-    denominacion: "J",
-    titulo: "Código Civil Comentado",
-    autor: "Alejandro Pérez Ruiz",
-    editorial: "Jurídica Nacional",
-    tomo: "2",
-    año: "2023",
-    pais: "Colombia",
-    fechaRegistro: "2024-03-10",
-    archivo: "codigo_civil_comentado.pdf",
-  },
-  {
-    id: "4",
-    codigo: "R0008",
-    tipo: "azs",
-    denominacion: "R",
-    titulo: "Revista de Investigación Científica Vol. 15",
-    autor: "Varios Autores",
-    editorial: "Universidad Nacional",
-    tomo: "",
-    año: "2024",
-    pais: "Colombia",
-    fechaRegistro: "2024-04-05",
-    archivo: "revista_investigacion_vol15.pdf",
-  },
-  {
-    id: "5",
-    codigo: "H0003",
-    tipo: "libro",
-    denominacion: "H",
-    titulo: "Periódico El Diario - Edición Especial",
-    autor: "Equipo Editorial",
-    editorial: "El Diario S.A.",
-    tomo: "",
-    año: "2024",
-    pais: "Colombia",
-    fechaRegistro: "2024-04-12",
-    archivo: "periodico_edicion_especial.pdf",
-  },
-  {
-    id: "6",
-    codigo: "MI0002",
-    tipo: "libro",
-    denominacion: "MI",
-    titulo: "Memoria Anual de Actividades 2023",
-    autor: "Comité Directivo",
-    editorial: "",
-    tomo: "",
-    año: "2023",
-    pais: "Colombia",
-    fechaRegistro: "2024-01-25",
-    archivo: "memoria_anual_2023.pdf",
-  },
-  {
-    id: "7",
-    codigo: "CG0026",
-    tipo: "libro-anillado",
-    denominacion: "CG",
-    titulo: "Guía de Buenas Prácticas Pedagógicas",
-    autor: "Ana Martínez Silva",
-    editorial: "Educativa Plus",
-    tomo: "",
-    año: "2024",
-    pais: "Colombia",
-    fechaRegistro: "2024-03-15",
-    archivo: "guia_buenas_practicas.pdf",
-  },
-]
+
 
 const denominationLabels = {
   MI: "Memoria Institucional",
@@ -144,7 +45,7 @@ const denominationLabels = {
 }
 
 export default function ConsultasPage() {
-  const [documents, setDocuments] = useState<Document[]>(initialDocuments)
+  const [documents, setDocuments] = useState<Document[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<string>("todos")
   const [filterDenomination, setFilterDenomination] = useState<string>("todos")
@@ -153,13 +54,26 @@ export default function ConsultasPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
 
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/bibliotecas`)
+        setDocuments(response.data)
+      } catch (error) {
+        console.error("Error al obtener documentos:", error)
+      }
+    }
+
+    fetchDocuments()
+  }, [])
+
   // Filtrar documentos
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch =
       doc.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.autor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = filterType === "todos" || doc.tipo === filterType
+      doc.denominacion_numerica.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = filterType === "todos" || doc.tipo_documento === filterType
     const matchesDenomination = filterDenomination === "todos" || doc.denominacion === filterDenomination
 
     return matchesSearch && matchesType && matchesDenomination
@@ -183,7 +97,7 @@ export default function ConsultasPage() {
     }
   }
 
-  const getTypeBadge = (tipo: string) => {
+  const getTypeBadge = (tipo_documento: string) => {
     const variants = {
       libro: "default",
       "libro-anillado": "secondary",
@@ -196,7 +110,7 @@ export default function ConsultasPage() {
       azs: "AZS",
     }
 
-    return <Badge variant={variants[tipo as keyof typeof variants]}>{labels[tipo as keyof typeof labels]}</Badge>
+    return <Badge variant={variants[tipo_documento as keyof typeof variants]}>{labels[tipo_documento as keyof typeof labels]}</Badge>
   }
 
   const getDenominationBadge = (denominacion: string) => {
@@ -240,7 +154,7 @@ export default function ConsultasPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo === "libro").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libro").length}</div>
           </CardContent>
         </Card>
 
@@ -249,7 +163,7 @@ export default function ConsultasPage() {
             <CardTitle className="text-sm font-medium">Libros Anillados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo === "libro-anillado").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libro-anillado").length}</div>
           </CardContent>
         </Card>
 
@@ -258,7 +172,7 @@ export default function ConsultasPage() {
             <CardTitle className="text-sm font-medium">AZS</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo === "azs").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "azs").length}</div>
           </CardContent>
         </Card>
       </div>
@@ -335,10 +249,10 @@ export default function ConsultasPage() {
               <TableBody>
                 {filteredDocuments.map((document) => (
                   <TableRow key={document.id}>
-                    <TableCell className="font-medium">{document.codigo}</TableCell>
+                    <TableCell className="font-medium">{document.denominacion_numerica}</TableCell>
                     <TableCell className="max-w-xs truncate">{document.titulo}</TableCell>
                     <TableCell>{document.autor}</TableCell>
-                    <TableCell>{getTypeBadge(document.tipo)}</TableCell>
+                    <TableCell>{getTypeBadge(document.tipo_documento)}</TableCell>
                     <TableCell>{getDenominationBadge(document.denominacion)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -388,11 +302,11 @@ export default function ConsultasPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="font-medium">Código</Label>
-                  <p className="text-sm bg-muted p-2 rounded">{selectedDocument.codigo}</p>
+                  <p className="text-sm bg-muted p-2 rounded">{selectedDocument.denominacion_numerica}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-medium">Tipo de Documento</Label>
-                  <div className="flex items-center">{getTypeBadge(selectedDocument.tipo)}</div>
+                  <div className="flex items-center">{getTypeBadge(selectedDocument.tipo_documento)}</div>
                 </div>
               </div>
 
@@ -435,7 +349,13 @@ export default function ConsultasPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="font-medium">Fecha de Registro</Label>
-                  <p className="text-sm bg-muted p-2 rounded">{selectedDocument.fechaRegistro}</p>
+                    <p className="text-sm bg-muted p-2 rounded">
+                    {new Date(selectedDocument.created_at).toLocaleDateString("es-ES", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                    </p>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-medium">Archivo</Label>
@@ -470,16 +390,16 @@ export default function ConsultasPage() {
                   <Label htmlFor="edit-codigo">Código</Label>
                   <Input
                     id="edit-codigo"
-                    value={editingDocument.codigo}
-                    onChange={(e) => setEditingDocument({ ...editingDocument, codigo: e.target.value })}
+                    value={editingDocument.denominacion_numerica}
+                    onChange={(e) => setEditingDocument({ ...editingDocument, denominacion_numerica: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-tipo">Tipo</Label>
                   <Select
-                    value={editingDocument.tipo}
+                    value={editingDocument.tipo_documento}
                     onValueChange={(value: "libro" | "libro-anillado" | "azs") =>
-                      setEditingDocument({ ...editingDocument, tipo: value })
+                      setEditingDocument({ ...editingDocument, tipo_documento: value })
                     }
                   >
                     <SelectTrigger>
