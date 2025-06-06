@@ -1,4 +1,7 @@
-import { Bell, Search, User } from "lucide-react"
+"use client"
+
+import { Bell, Search, User, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -12,6 +15,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function Navbar() {
+  const router = useRouter()
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated")
+    localStorage.removeItem("user")
+    router.push("/login")
+  }
+
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-white px-6">
       <SidebarTrigger />
@@ -40,7 +51,10 @@ export function Navbar() {
             <DropdownMenuItem>Perfil</DropdownMenuItem>
             <DropdownMenuItem>Configuración</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

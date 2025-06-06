@@ -1,5 +1,8 @@
+"use client"
 
-import { BookOpen, Home, Users, Settings, FileText, BarChart3 } from "lucide-react"
+import { BookOpen, Home, Users, Settings, FileText, BarChart3, Search } from "lucide-react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 
 import {
   Sidebar,
@@ -17,32 +20,39 @@ import {
 const menuItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: Home,
   },
   {
     title: "Biblioteca",
-    url: "/biblioteca",
+    url: "/dashboard/biblioteca",
     icon: BookOpen,
   },
   {
+    title: "Consultas",
+    url: "/dashboard/consultas",
+    icon: Search,
+  },
+  {
     title: "Usuarios",
-    url: "/usuarios",
+    url: "/dashboard/usuarios",
     icon: Users,
   },
   {
     title: "Reportes",
-    url: "/reportes",
+    url: "/dashboard/reportes",
     icon: BarChart3,
   },
   {
     title: "Configuración",
-    url: "/configuracion",
+    url: "/dashboard/configuracion",
     icon: Settings,
   },
 ]
 
 export function AppSidebar() {
+  const pathname = usePathname()
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -61,11 +71,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
+                  <SidebarMenuButton asChild isActive={pathname === item.url}>
+                    <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

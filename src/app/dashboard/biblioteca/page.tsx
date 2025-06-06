@@ -152,19 +152,19 @@ export default function BibliotecaPage() {
                     id="consecutivo"
                     value={documentData.consecutivo.replace(documentData.denomination, "")}
                     onChange={(e) => {
-                      const numero = e.target.value.replace(/\D/g, "").slice(0, 4).padStart(4, "0")
+                      const numero = e.target.value.replace(/\D/g, "").slice(0, 4)
                       setDocumentData((prev) => ({
                         ...prev,
                         consecutivo: `${documentData.denomination}${numero}`,
                       }))
                     }}
-                    placeholder="0001"
+                    placeholder="1234"
                     maxLength={4}
-                    className="w-20"
+                    className="w-24"
                   />
                 </div>
-                <p className="text-sm text-muted-foreground">Ingresa el número consecutivo de 4 dígitos</p>
-                {documentData.consecutivo && (
+                <p className="text-sm text-muted-foreground">Ingresa el número consecutivo (hasta 4 dígitos)</p>
+                {documentData.consecutivo && documentData.consecutivo.length > documentData.denomination.length && (
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <Label className="text-sm font-medium text-blue-700">Código Final:</Label>
                     <Badge variant="secondary" className="ml-2 text-lg bg-blue-100 text-blue-800">
