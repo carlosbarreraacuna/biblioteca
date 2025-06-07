@@ -148,22 +148,24 @@ export default function UsuariosPage() {
 
   // Filtrar usuarios
   const filteredUsers = users?.data?.data
-    ? users.data.data.filter((user) => {
-        const matchesSearch =
-          user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesRole =
-          filterRole === "todos" ||
-          (filterRole === "admin" && user.is_admin) ||
-          (filterRole === "usuario" && !user.is_admin)
-        const matchesStatus =
-          filterStatus === "todos" ||
-          (filterStatus === "activo" && user.estado) ||
-          (filterStatus === "inactivo" && !user.estado)
+  ? users.data.data.filter((user) => {
+      const username = user.username || "";
+      const email = user.email || "";
+      const matchesSearch =
+        username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole =
+        filterRole === "todos" ||
+        (filterRole === "admin" && user.is_admin) ||
+        (filterRole === "usuario" && !user.is_admin);
+      const matchesStatus =
+        filterStatus === "todos" ||
+        (filterStatus === "activo" && user.estado) ||
+        (filterStatus === "inactivo" && !user.estado);
 
-        return matchesSearch && matchesRole && matchesStatus
-      })
-    : []
+      return matchesSearch && matchesRole && matchesStatus;
+    })
+  : [];
 
   const getRoleBadge = (isAdmin: boolean) => {
     return <Badge variant={isAdmin ? "destructive" : "secondary"}>{isAdmin ? "Administrador" : "Usuario"}</Badge>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,18 +19,18 @@ interface AuditLog {
   modulo: "documentos" | "usuarios" | "configuracion" | "reportes" | "sistema"
   descripcion: string
   detalles: string
-  fechaHora: string
+  created_at: string
   ip: string
   navegador: string
 }
 
 interface UserStats {
   usuario: string
-  documentosCreados: number
-  documentosEditados: number
-  consultasRealizadas: number
+  documentoscreados: number
+  documentoseditados: number
+  consultasrealizadas: number
   tiempoSesion: string
-  ultimaActividad: string
+  ultimaactividad: string
 }
 
 interface DailyStats {
@@ -42,167 +42,6 @@ interface DailyStats {
   total: number
 }
 
-// Datos de ejemplo para auditoría
-const auditLogs: AuditLog[] = [
-  {
-    id: "1",
-    usuario: "Juan Pérez",
-    accion: "crear",
-    modulo: "documentos",
-    descripcion: "Creó documento MI0001",
-    detalles: "Documento: Historia de la Institución Educativa - Dr. Carlos Mendoza",
-    fechaHora: "2024-12-06 09:15:23",
-    ip: "192.168.1.100",
-    navegador: "Chrome 120.0",
-  },
-  {
-    id: "2",
-    usuario: "María García",
-    accion: "editar",
-    modulo: "usuarios",
-    descripcion: "Editó usuario Carlos López",
-    detalles: "Cambió rol de usuario a bibliotecario",
-    fechaHora: "2024-12-06 08:45:12",
-    ip: "192.168.1.101",
-    navegador: "Firefox 121.0",
-  },
-  {
-    id: "3",
-    usuario: "Juan Pérez",
-    accion: "crear",
-    modulo: "documentos",
-    descripcion: "Creó documento CG0025",
-    detalles: "Documento: Manual de Procedimientos - María García López",
-    fechaHora: "2024-12-06 10:30:45",
-    ip: "192.168.1.100",
-    navegador: "Chrome 120.0",
-  },
-  {
-    id: "4",
-    usuario: "Ana Martínez",
-    accion: "consultar",
-    modulo: "documentos",
-    descripcion: "Consultó catálogo de documentos",
-    detalles: "Filtró por denominación: Jurídico",
-    fechaHora: "2024-12-06 11:20:18",
-    ip: "192.168.1.102",
-    navegador: "Safari 17.0",
-  },
-  {
-    id: "5",
-    usuario: "Carlos López",
-    accion: "crear",
-    modulo: "documentos",
-    descripcion: "Creó documento J0012",
-    detalles: "Documento: Código Civil Comentado - Alejandro Pérez Ruiz",
-    fechaHora: "2024-12-06 14:15:30",
-    ip: "192.168.1.103",
-    navegador: "Edge 120.0",
-  },
-  {
-    id: "6",
-    usuario: "María García",
-    accion: "login",
-    modulo: "sistema",
-    descripcion: "Inició sesión en el sistema",
-    detalles: "Login exitoso",
-    fechaHora: "2024-12-06 08:00:00",
-    ip: "192.168.1.101",
-    navegador: "Firefox 121.0",
-  },
-  {
-    id: "7",
-    usuario: "Juan Pérez",
-    accion: "editar",
-    modulo: "documentos",
-    descripcion: "Editó documento MI0001",
-    detalles: "Actualizó información del autor",
-    fechaHora: "2024-12-06 15:45:22",
-    ip: "192.168.1.100",
-    navegador: "Chrome 120.0",
-  },
-]
-
-// Estadísticas de usuarios
-const userStats: UserStats[] = [
-  {
-    usuario: "Juan Pérez",
-    documentosCreados: 15,
-    documentosEditados: 8,
-    consultasRealizadas: 45,
-    tiempoSesion: "6h 30m",
-    ultimaActividad: "2024-12-06 15:45:22",
-  },
-  {
-    usuario: "María García",
-    documentosCreados: 12,
-    documentosEditados: 15,
-    consultasRealizadas: 32,
-    tiempoSesion: "5h 15m",
-    ultimaActividad: "2024-12-06 14:20:10",
-  },
-  {
-    usuario: "Carlos López",
-    documentosCreados: 8,
-    documentosEditados: 5,
-    consultasRealizadas: 28,
-    tiempoSesion: "4h 45m",
-    ultimaActividad: "2024-12-06 14:15:30",
-  },
-  {
-    usuario: "Ana Martínez",
-    documentosCreados: 6,
-    documentosEditados: 3,
-    consultasRealizadas: 67,
-    tiempoSesion: "3h 20m",
-    ultimaActividad: "2024-12-06 11:20:18",
-  },
-]
-
-// Estadísticas diarias por usuario
-const dailyStats: DailyStats[] = [
-  {
-    fecha: "2024-12-06",
-    usuario: "Juan Pérez",
-    libros: 3,
-    librosAnillados: 2,
-    azs: 1,
-    total: 6,
-  },
-  {
-    fecha: "2024-12-06",
-    usuario: "María García",
-    libros: 2,
-    librosAnillados: 1,
-    azs: 0,
-    total: 3,
-  },
-  {
-    fecha: "2024-12-06",
-    usuario: "Carlos López",
-    libros: 1,
-    librosAnillados: 0,
-    azs: 2,
-    total: 3,
-  },
-  {
-    fecha: "2024-12-05",
-    usuario: "Juan Pérez",
-    libros: 4,
-    librosAnillados: 1,
-    azs: 0,
-    total: 5,
-  },
-  {
-    fecha: "2024-12-05",
-    usuario: "Ana Martínez",
-    libros: 0,
-    librosAnillados: 3,
-    azs: 1,
-    total: 4,
-  },
-]
-
 export default function AuditoriaPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterAction, setFilterAction] = useState<string>("todas")
@@ -210,35 +49,90 @@ export default function AuditoriaPage() {
   const [filterUser, setFilterUser] = useState<string>("todos")
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const [userStats, setUserStats] = useState<UserStats[]>([])
+  const [dailyStats, setDailyStats] = useState<DailyStats[]>([])
+  const [loading, setLoading] = useState(false)
 
-  // Filtrar logs de auditoría
-  const filteredLogs = auditLogs.filter((log) => {
-    const matchesSearch =
-      log.usuario.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.detalles.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesAction = filterAction === "todas" || log.accion === filterAction
-    const matchesModule = filterModule === "todos" || log.modulo === filterModule
-    const matchesUser = filterUser === "todos" || log.usuario === filterUser
+  // Cargar logs de auditoría
+  useEffect(() => {
+    setLoading(true)
+    const params = new URLSearchParams()
+    if (filterAction !== "todas") params.append("accion", filterAction)
+    if (filterModule !== "todos") params.append("modulo", filterModule)
+    if (filterUser !== "todos") params.append("usuario", filterUser)
+    if (searchTerm) params.append("search", searchTerm)
+    
+    const token = localStorage.getItem("token") || ""
+    fetch(`http://localhost:8000/api/audit-logs?${params.toString()}`, {
+      headers: {
+      Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => setAuditLogs(data))
+      .finally(() => setLoading(false))
+    }, [filterAction, filterModule, filterUser, searchTerm])
 
-    return matchesSearch && matchesAction && matchesModule && matchesUser
-  })
+    // Cargar estadísticas de usuario
+    useEffect(() => {
+    const token = localStorage.getItem("token") || ""
+    fetch("http://localhost:8000/api/audit-logs/user-stats", {
+      headers: {
+      Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => setUserStats(data))
+    }, [])
+
+    // Cargar estadísticas diarias
+    useEffect(() => {
+    const token = localStorage.getItem("token") || ""
+    fetch("http://localhost:8000/api/audit-logs/daily-stats", {
+      headers: {
+      Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => setDailyStats(data))
+    }, [])
+
+  // Filtrar logs de auditoría (ya viene filtrado del backend)
+  const filteredLogs = auditLogs
 
   const handleViewLog = (log: AuditLog) => {
     setSelectedLog(log)
     setIsViewDialogOpen(true)
   }
 
-  const getActionBadge = (accion: string) => {
-    const variants = {
-      crear: "default",
-      editar: "secondary",
-      eliminar: "destructive",
-      consultar: "outline",
-      login: "default",
-      logout: "secondary",
-    } as const
+  // Exportar log
+  const handleExport = () => {
+    const params = new URLSearchParams()
+    if (filterAction !== "todas") params.append("accion", filterAction)
+    if (filterModule !== "todos") params.append("modulo", filterModule)
+    if (filterUser !== "todos") params.append("usuario", filterUser)
+    if (searchTerm) params.append("search", searchTerm)
+    const token = localStorage.getItem("token") || ""
+    fetch(`http://localhost:8000/api/audit-logs/export?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = "audit-log.xlsx"
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+      })
+  }
 
+  const getActionBadge = (accion: string) => {
     const colors = {
       crear: "bg-green-100 text-green-800",
       editar: "bg-blue-100 text-blue-800",
@@ -271,6 +165,43 @@ export default function AuditoriaPage() {
     )
   }
 
+  // Obtener usuarios únicos para el filtro
+  const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.usuario)))
+
+  // Calcular estadísticas generales
+  const activitiesToday = auditLogs.filter(log => {
+  const today = new Date().toISOString().split('T')[0]
+  return log.created_at && log.created_at.includes(today)
+}).length
+
+const docsCreatedToday = auditLogs.filter(log => {
+  const today = new Date().toISOString().split('T')[0]
+  return log.accion === "crear" && log.modulo === "documentos" && 
+         log.created_at && log.created_at.includes(today)
+}).length
+
+// Formatear fecha y hora
+const formatDateTime = (isoString: string) => {
+  const date = new Date(isoString);
+  
+  // Formatear fecha como DD/MM/YYYY
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  const formattedDate = `${day}/${month}/${year}`;
+  
+  // Formatear hora como HH:MM:SS
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  const formattedTime = `${hours}:${minutes}:${seconds}`;
+  
+  return {
+    date: formattedDate,
+    time: formattedTime
+  };
+};
+
   return (
     <div className="space-y-6">
       <div>
@@ -286,9 +217,7 @@ export default function AuditoriaPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {auditLogs.filter((log) => log.fechaHora.includes("2024-12-06")).length}
-            </div>
+            <div className="text-2xl font-bold">{activitiesToday}</div>
             <p className="text-xs text-muted-foreground">Acciones registradas</p>
           </CardContent>
         </Card>
@@ -310,9 +239,7 @@ export default function AuditoriaPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {auditLogs.filter((log) => log.accion === "crear" && log.modulo === "documentos").length}
-            </div>
+            <div className="text-2xl font-bold">{docsCreatedToday}</div>
             <p className="text-xs text-muted-foreground">Hoy</p>
           </CardContent>
         </Card>
@@ -323,7 +250,14 @@ export default function AuditoriaPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4h 52m</div>
+            <div className="text-2xl font-bold">
+              {userStats.length > 0 
+                ? userStats.reduce((acc, stat) => {
+                    const [hours, minutes] = stat.tiempoSesion.split('h ').map(part => parseInt(part));
+                    return acc + (hours * 60 + minutes);
+                  }, 0) / userStats.length + 'm'
+                : '0m'}
+            </div>
             <p className="text-xs text-muted-foreground">Sesión por usuario</p>
           </CardContent>
         </Card>
@@ -345,7 +279,7 @@ export default function AuditoriaPage() {
                   <CardTitle>Registro de Actividades</CardTitle>
                   <CardDescription>Historial completo de acciones realizadas en el sistema</CardDescription>
                 </div>
-                <Button variant="outline" className="flex items-center gap-2">
+                <Button variant="outline" className="flex items-center gap-2" onClick={handleExport}>
                   <Download className="h-4 w-4" />
                   Exportar Log
                 </Button>
@@ -400,98 +334,135 @@ export default function AuditoriaPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos los usuarios</SelectItem>
-                    <SelectItem value="Juan Pérez">Juan Pérez</SelectItem>
-                    <SelectItem value="María García">María García</SelectItem>
-                    <SelectItem value="Carlos López">Carlos López</SelectItem>
-                    <SelectItem value="Ana Martínez">Ana Martínez</SelectItem>
+                    {uniqueUsers.map(usuario => (
+                      <SelectItem key={usuario} value={usuario}>{usuario}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Tabla de auditoría */}
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha/Hora</TableHead>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Acción</TableHead>
-                      <TableHead>Módulo</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-mono text-sm">{log.fechaHora}</TableCell>
-                        <TableCell className="font-medium">{log.usuario}</TableCell>
-                        <TableCell>{getActionBadge(log.accion)}</TableCell>
-                        <TableCell>{getModuleBadge(log.modulo)}</TableCell>
-                        <TableCell className="max-w-xs truncate">{log.descripcion}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewLog(log)}
-                            className="flex items-center gap-1"
-                          >
-                            <Eye className="h-4 w-4" />
-                            Ver
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              {/* Tabla de auditoría */}
+<div className="rounded-md border">
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Fecha</TableHead>
+        <TableHead>Hora</TableHead>
+        <TableHead>Usuario</TableHead>
+        <TableHead>Acción</TableHead>
+        <TableHead>Módulo</TableHead>
+        <TableHead>Descripción</TableHead>
+        <TableHead className="text-right">Acciones</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {loading ? (
+        <TableRow>
+          <TableCell colSpan={7} className="text-center py-4">
+            Cargando registros...
+          </TableCell>
+        </TableRow>
+      ) : filteredLogs.length > 0 ? (
+        filteredLogs.map((log) => {
+          const { date, time } = formatDateTime(log.created_at);
+          return (
+            <TableRow key={log.id}>
+              <TableCell className="font-mono text-sm">{date}</TableCell>
+              <TableCell className="font-mono text-sm">{time}</TableCell>
+              <TableCell className="font-medium">{log.usuario}</TableCell>
+              <TableCell>{getActionBadge(log.accion)}</TableCell>
+              <TableCell>{getModuleBadge(log.modulo)}</TableCell>
+              <TableCell className="max-w-xs truncate">{log.descripcion}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewLog(log)}
+                  className="flex items-center gap-1"
+                >
+                  <Eye className="h-4 w-4" />
+                  Ver
+                </Button>
+              </TableCell>
+            </TableRow>
+          )
+        })
+      ) : (
+        <TableRow>
+          <TableCell colSpan={7} className="text-center py-4">
+            No se encontraron registros
+          </TableCell>
+        </TableRow>
+      )}
+    </TableBody>
+  </Table>
+</div>
             </CardContent>
           </Card>
         </TabsContent>
 
+       
         {/* Tab de Estadísticas de Usuarios */}
-        <TabsContent value="estadisticas">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estadísticas por Usuario</CardTitle>
-              <CardDescription>Resumen de actividad y productividad de cada usuario</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Docs. Creados</TableHead>
-                      <TableHead>Docs. Editados</TableHead>
-                      <TableHead>Consultas</TableHead>
-                      <TableHead>Tiempo Sesión</TableHead>
-                      <TableHead>Última Actividad</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {userStats.map((stat, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{stat.usuario}</TableCell>
-                        <TableCell>
-                          <Badge variant="default">{stat.documentosCreados}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{stat.documentosEditados}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{stat.consultasRealizadas}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono">{stat.tiempoSesion}</TableCell>
-                        <TableCell className="font-mono text-sm">{stat.ultimaActividad}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+<TabsContent value="estadisticas">
+  <Card>
+    <CardHeader>
+      <CardTitle>Estadísticas por Usuario</CardTitle>
+      <CardDescription>Resumen de actividad y productividad de cada usuario</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Usuario</TableHead>
+              <TableHead>Docs. Creados</TableHead>
+              <TableHead>Docs. Editados</TableHead>
+              <TableHead>Consultas</TableHead>
+              <TableHead>Tiempo Sesión</TableHead>
+              <TableHead>Última Actividad</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {userStats.length > 0 ? (
+              userStats.map((stat, index) => {
+                // Formatear la fecha de última actividad
+                const ultimaActividad = stat.ultimaactividad ? 
+                  new Date(stat.ultimaactividad).toLocaleString() : 
+                  'Sin registro';
+                
+                return (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{stat.usuario}</TableCell>
+                    <TableCell>
+                      <Badge variant="default">{stat.documentoscreados}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{stat.documentoseditados}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{stat.consultasrealizadas}</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono">{stat.tiempoSesion}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {ultimaActividad}
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-4">
+                  No hay estadísticas disponibles
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
 
         {/* Tab de Productividad Diaria */}
         <TabsContent value="productividad">
@@ -514,32 +485,40 @@ export default function AuditoriaPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dailyStats.map((stat, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-mono">{stat.fecha}</TableCell>
-                        <TableCell className="font-medium">{stat.usuario}</TableCell>
-                        <TableCell>
-                          <Badge variant="default" className="bg-blue-100 text-blue-800">
-                            {stat.libros}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="default" className="bg-green-100 text-green-800">
-                            {stat.librosAnillados}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="default" className="bg-purple-100 text-purple-800">
-                            {stat.azs}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="default" className="bg-gray-800 text-white">
-                            {stat.total}
-                          </Badge>
+                    {dailyStats.length > 0 ? (
+                      dailyStats.map((stat, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono">{stat.fecha}</TableCell>
+                          <TableCell className="font-medium">{stat.usuario}</TableCell>
+                          <TableCell>
+                            <Badge variant="default" className="bg-blue-100 text-blue-800">
+                              {stat.libros}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              {stat.librosAnillados}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="default" className="bg-purple-100 text-purple-800">
+                              {stat.azs}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="default" className="bg-gray-800 text-white">
+                              {stat.total}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4">
+                          No hay datos de productividad disponibles
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -551,8 +530,16 @@ export default function AuditoriaPage() {
                     <CardTitle className="text-sm">Usuario Más Productivo</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">Juan Pérez</div>
-                    <p className="text-xs text-muted-foreground">11 documentos hoy</p>
+                    <div className="text-2xl font-bold">
+                      {dailyStats.length > 0 
+                        ? dailyStats.reduce((max, stat) => stat.total > max.total ? stat : max, dailyStats[0]).usuario
+                        : 'N/A'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dailyStats.length > 0 
+                        ? `${dailyStats.reduce((max, stat) => stat.total > max.total ? stat : max, dailyStats[0]).total} documentos hoy`
+                        : 'No hay datos'}
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -561,8 +548,19 @@ export default function AuditoriaPage() {
                     <CardTitle className="text-sm">Tipo Más Digitado</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">Libros</div>
-                    <p className="text-xs text-muted-foreground">10 documentos hoy</p>
+                    <div className="text-2xl font-bold">
+                      {dailyStats.length > 0 
+                        ? ['libros', 'librosAnillados', 'azs'].reduce((maxType, type) => 
+                            dailyStats.reduce((sum, stat) => sum + (stat as any)[type], 0) > 
+                            dailyStats.reduce((sum, stat) => sum + (stat as any)[maxType], 0) 
+                              ? type : maxType, 'libros')
+                        : 'N/A'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {dailyStats.length > 0 
+                        ? `${dailyStats.reduce((sum, stat) => sum + stat.libros + stat.librosAnillados + stat.azs, 0)} documentos hoy`
+                        : 'No hay datos'}
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -571,7 +569,11 @@ export default function AuditoriaPage() {
                     <CardTitle className="text-sm">Promedio Diario</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">4.2</div>
+                    <div className="text-2xl font-bold">
+                      {dailyStats.length > 0 
+                        ? (dailyStats.reduce((sum, stat) => sum + stat.total, 0) / dailyStats.length).toFixed(1)
+                        : '0'}
+                    </div>
                     <p className="text-xs text-muted-foreground">docs por usuario</p>
                   </CardContent>
                 </Card>
@@ -597,7 +599,7 @@ export default function AuditoriaPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="font-medium">Fecha y Hora</Label>
-                  <p className="text-sm bg-muted p-2 rounded font-mono">{selectedLog.fechaHora}</p>
+                  <p className="text-sm bg-muted p-2 rounded font-mono">{selectedLog.created_at}</p>
                 </div>
               </div>
 
