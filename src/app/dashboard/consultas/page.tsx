@@ -22,7 +22,7 @@ import { Search, Eye, Edit, Download, BookOpen, FileText } from "lucide-react"
 interface Document {
   id: string
   denominacion_numerica: string
-  tipo_documento: "libro" | "libro-anillado" | "azs"
+  tipo_documento: "libros" | "libros_anillados" | "azs"
   denominacion: "MI" | "CG" | "J" | "R" | "H"
   titulo: string
   autor: string
@@ -99,14 +99,14 @@ export default function ConsultasPage() {
 
   const getTypeBadge = (tipo_documento: string) => {
     const variants = {
-      libro: "default",
-      "libro-anillado": "secondary",
+      libros: "default",
+      "libros_anillados": "secondary",
       azs: "outline",
     } as const
 
     const labels = {
-      libro: "Libro",
-      "libro-anillado": "Libro Anillado",
+      libros: "Libros",
+      "libros_anillados": "libros Anillado",
       azs: "AZS",
     }
 
@@ -154,7 +154,7 @@ export default function ConsultasPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libro").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libros").length}</div>
           </CardContent>
         </Card>
 
@@ -163,7 +163,7 @@ export default function ConsultasPage() {
             <CardTitle className="text-sm font-medium">Libros Anillados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libro-anillado").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libros_anillados").length}</div>
           </CardContent>
         </Card>
 
@@ -212,8 +212,8 @@ export default function ConsultasPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos los tipos</SelectItem>
-                <SelectItem value="libro">Libro</SelectItem>
-                <SelectItem value="libro-anillado">Libro Anillado</SelectItem>
+                <SelectItem value="libros">libros</SelectItem>
+                <SelectItem value="libros_anillados">libros Anillado</SelectItem>
                 <SelectItem value="azs">AZS</SelectItem>
               </SelectContent>
             </Select>
@@ -398,7 +398,7 @@ export default function ConsultasPage() {
                   <Label htmlFor="edit-tipo">Tipo</Label>
                   <Select
                     value={editingDocument.tipo_documento}
-                    onValueChange={(value: "libro" | "libro-anillado" | "azs") =>
+                    onValueChange={(value: "libros" | "libros_anillados" | "azs") =>
                       setEditingDocument({ ...editingDocument, tipo_documento: value })
                     }
                   >
@@ -406,8 +406,8 @@ export default function ConsultasPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="libro">Libro</SelectItem>
-                      <SelectItem value="libro-anillado">Libro Anillado</SelectItem>
+                      <SelectItem value="libros">libros</SelectItem>
+                      <SelectItem value="libros_anillados">libros Anillado</SelectItem>
                       <SelectItem value="azs">AZS</SelectItem>
                     </SelectContent>
                   </Select>

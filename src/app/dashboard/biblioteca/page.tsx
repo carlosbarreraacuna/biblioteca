@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, ArrowLeft, ArrowRight, Save, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-type DocumentType = "libro" | "libro-anillado" | "azs" | ""
+type DocumentType = "libros" | "libros_anillados" | "azs" | ""
 type Denomination = "MI" | "CG" | "J" | "R" | "H" | ""
 
 interface DocumentData {
@@ -177,8 +177,8 @@ export default function BibliotecaPage() {
                   <SelectValue placeholder="Selecciona el tipo de documento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="libro">Libro</SelectItem>
-                  <SelectItem value="libro-anillado">Libro Anillado</SelectItem>
+                  <SelectItem value="libros">libros</SelectItem>
+                  <SelectItem value="libros_anillados">libros Anillado</SelectItem>
                   <SelectItem value="azs">AZS</SelectItem>
                 </SelectContent>
               </Select>

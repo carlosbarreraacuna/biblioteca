@@ -8,9 +8,52 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Settings, Save, Database, Shield, Bell } from "lucide-react"
+import { Settings, Save, Database, Shield, Bell, Palette, Check } from "lucide-react"
+import { useState } from "react"
+
+const colorPalettes = [
+  {
+    id: 1,
+    name: "Opción 1 - Natural",
+    colors: ["#FAF1E6", "#FDFAF6", "#E4EFE7", "#064420"],
+    description: "Tonos naturales y tierra",
+  },
+  {
+    id: 2,
+    name: "Opción 2 - Cálido",
+    colors: ["#FFFAEC", "#F5ECD5", "#578E7E", "#3D3D3D"],
+    description: "Paleta cálida y acogedora",
+  },
+  {
+    id: 3,
+    name: "Opción 3 - Vibrante",
+    colors: ["#EEEEEE", "#234C63", "#379956", "#FFC85B"],
+    description: "Colores vibrantes y energéticos",
+  },
+  {
+    id: 4,
+    name: "Opción 4 - Profesional",
+    colors: ["#F8F1F1", "#11698E", "#19456B", "#16C79A"],
+    description: "Estilo profesional y moderno",
+  },
+]
 
 export default function ConfiguracionPage() {
+  const [selectedPalette, setSelectedPalette] = useState<number>(1)
+
+  const handlePaletteChange = (paletteId: number) => {
+    setSelectedPalette(paletteId)
+    // Aquí aplicarías los colores al tema del sistema
+    const palette = colorPalettes.find((p) => p.id === paletteId)
+    if (palette) {
+      // Aplicar colores CSS custom properties
+      document.documentElement.style.setProperty("--color-primary", palette.colors[2])
+      document.documentElement.style.setProperty("--color-secondary", palette.colors[1])
+      document.documentElement.style.setProperty("--color-background", palette.colors[0])
+      document.documentElement.style.setProperty("--color-accent", palette.colors[3])
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -19,6 +62,136 @@ export default function ConfiguracionPage() {
       </div>
 
       <div className="grid gap-6">
+        {/* Configuración de Tema y Colores */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5" />
+              Tema y Colores
+            </CardTitle>
+            <CardDescription>
+              Personaliza la apariencia del sistema con paletas de colores predeterminadas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-medium">Selecciona una paleta de colores:</Label>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {colorPalettes.map((palette) => (
+                  <div
+                    key={palette.id}
+                    className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                      selectedPalette === palette.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                    onClick={() => handlePaletteChange(palette.id)}
+                  >
+                    {selectedPalette === palette.id && (
+                      <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{palette.name}</h3>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground">{palette.description}</p>
+
+                      <div className="flex gap-2">
+                        {palette.colors.map((color, index) => (
+                          <div
+                            key={index}
+                            className="w-8 h-8 rounded-md border border-border shadow-sm"
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {palette.colors.map((color, index) => (
+                          <div key={index} className="font-mono text-muted-foreground">
+                            {color}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <Label className="text-base font-medium">Vista previa del tema:</Label>
+
+              <div
+                className="p-4 border rounded-lg space-y-4"
+                style={{
+                  backgroundColor: colorPalettes.find((p) => p.id === selectedPalette)?.colors[0],
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Ejemplo de interfaz</h4>
+                  <Button
+                    size="sm"
+                    style={{
+                      backgroundColor: colorPalettes.find((p) => p.id === selectedPalette)?.colors[2],
+                      color: "white",
+                    }}
+                  >
+                    Botón Principal
+                  </Button>
+                </div>
+
+                <div
+                  className="p-3 rounded border"
+                  style={{
+                    backgroundColor: colorPalettes.find((p) => p.id === selectedPalette)?.colors[1],
+                  }}
+                >
+                  <p className="text-sm">Este es un ejemplo de cómo se verá el contenido con la paleta seleccionada.</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <div
+                    className="px-3 py-1 rounded text-xs font-medium text-white"
+                    style={{
+                      backgroundColor: colorPalettes.find((p) => p.id === selectedPalette)?.colors[3],
+                    }}
+                  >
+                    Etiqueta
+                  </div>
+                  <div
+                    className="px-3 py-1 rounded text-xs font-medium"
+                    style={{
+                      backgroundColor: colorPalettes.find((p) => p.id === selectedPalette)?.colors[1],
+                      color: colorPalettes.find((p) => p.id === selectedPalette)?.colors[3],
+                    }}
+                  >
+                    Secundaria
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch id="tema-oscuro" />
+              <Label htmlFor="tema-oscuro">Habilitar modo oscuro automático</Label>
+            </div>
+
+            <Button>
+              <Save className="mr-2 h-4 w-4" />
+              Aplicar Tema Seleccionado
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Configuración General */}
         <Card>
           <CardHeader>
