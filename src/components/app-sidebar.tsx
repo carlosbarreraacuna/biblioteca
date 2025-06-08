@@ -1,8 +1,9 @@
 "use client"
 
-import { BookOpen, Home, Users, Settings, FileText, BarChart3, Search, Shield } from "lucide-react"
+import { BookOpen, Home, Users, Settings, BarChart3, Search, Shield } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 
 import {
   Sidebar,
@@ -62,9 +63,9 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-4 py-2">
-          <FileText className="h-8 w-8 text-primary" />
+          <Image src="/cardique.png" alt="" width={32} height={32} />
           <div>
-            <h2 className="text-lg font-semibold">BiblioSoft</h2>
+            <h2 className="text-lg font-semibold">CENDOC-CAR</h2>
             <p className="text-sm text-muted-foreground">Sistema de Biblioteca</p>
           </div>
         </div>
