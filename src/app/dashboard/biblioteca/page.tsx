@@ -21,7 +21,7 @@ interface DocumentData {
   titulo: string
   autor: string
   editorial: string
-  tomo: string
+  tomo: number
   año: string
   pais: string
   archivo: File | null
@@ -48,7 +48,7 @@ export default function BibliotecaPage() {
     titulo: "",
     autor: "",
     editorial: "",
-    tomo: "",
+    tomo: 0, // Cambiado a numérico
     año: "",
     pais: "",
     archivo: null,
@@ -85,7 +85,7 @@ export default function BibliotecaPage() {
       formData.append('titulo', documentData.titulo);
       formData.append('autor', documentData.autor);
       formData.append('editorial', documentData.editorial || "");
-      formData.append('tomo', documentData.tomo || "");
+      formData.append('tomo', documentData.tomo ? String(Number(documentData.tomo)) : "0");
       formData.append('año', documentData.año);  // Enviar como string
       formData.append('pais', documentData.pais);
       formData.append('archivo', documentData.archivo);  // Nombre correcto
@@ -286,15 +286,22 @@ export default function BibliotecaPage() {
                 />
               </div>
 
-              <div className="space-y-2">
+                <div className="space-y-2">
                 <Label htmlFor="tomo">Tomo</Label>
                 <Input
                   id="tomo"
-                  value={documentData.tomo}
-                  onChange={(e) => setDocumentData((prev) => ({ ...prev, tomo: e.target.value }))}
+                  type="number"
+                  value={documentData.tomo === 0 ? "" : documentData.tomo}
+                  onChange={(e) =>
+                  setDocumentData((prev) => ({
+                    ...prev,
+                    tomo: e.target.value === "" ? 0 : Number(e.target.value),
+                  }))
+                  }
                   placeholder="Número de tomo"
+                  min={0}
                 />
-              </div>
+                </div>
 
               <div className="space-y-2">
                 <Label htmlFor="año">Año *</Label>
@@ -302,8 +309,15 @@ export default function BibliotecaPage() {
                   id="año"
                   type="number"
                   value={documentData.año}
-                  onChange={(e) => setDocumentData((prev) => ({ ...prev, año: e.target.value }))}
+                  onChange={(e) => {
+                    // Solo permitir hasta 4 dígitos numéricos
+                    let value = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setDocumentData((prev) => ({ ...prev, año: value }));
+                  }}
                   placeholder="Año de publicación"
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="\d{4}"
                 />
               </div>
 

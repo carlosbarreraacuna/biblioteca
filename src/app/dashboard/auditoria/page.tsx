@@ -54,6 +54,61 @@ interface PeriodTotals {
   total: number
 }
 
+// Función para formatear fechas en hora de Colombia (UTC-5)
+const formatColombiaTime = (isoString: string) => {
+  if (!isoString) return 'Sin registro';
+
+  // Si la cadena es tipo "YYYY-MM-DD HH:mm:ss", conviértela a ISO con Z (UTC)
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(isoString)) {
+    const isoWithZ = isoString.replace(' ', 'T') + 'Z';
+    return new Date(isoWithZ).toLocaleString('es-CO', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZone: 'America/Bogota'
+    });
+  }
+
+  // Si viene en formato ISO estándar, usar la conversión normal
+  return new Date(isoString).toLocaleString('es-CO', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'America/Bogota'
+  });
+};
+
+// Función para separar fecha y hora en hora de Colombia
+const formatDateTime = (isoString: string) => {
+  if (!isoString) return { date: 'N/A', time: 'N/A' };
+  
+  const date = new Date(isoString);
+  
+  return {
+    date: date.toLocaleDateString('es-CO', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      timeZone: 'America/Bogota'
+    }),
+    time: date.toLocaleTimeString('es-CO', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit',
+      hour12: false,
+      timeZone: 'America/Bogota'
+    })
+  };
+}
+
 // Componente principal
 export default function AuditoriaPage() {
   // Estados
@@ -80,48 +135,6 @@ export default function AuditoriaPage() {
   // Obtener usuarios únicos para los filtros
   const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.usuario)))
   const uniqueDailyUsers = Array.from(new Set(dailyStats.map(stat => stat.user_id)))
-
-  // Funciones de utilidad
-  const formatDateTime = (isoString: string) => {
-    const date = new Date(isoString)
-    return {
-      date: format(date, "dd/MM/yyyy", { locale: es }),
-      time: format(date, "HH:mm:ss", { locale: es })
-    }
-  }
-
-  const getActionBadge = (accion: string) => {
-    const colors = {
-      crear: "bg-green-100 text-green-800",
-      editar: "bg-blue-100 text-blue-800",
-      eliminar: "bg-red-100 text-red-800",
-      consultar: "bg-gray-100 text-gray-800",
-      login: "bg-purple-100 text-purple-800",
-      logout: "bg-orange-100 text-orange-800",
-    }
-
-    return (
-      <Badge className={colors[accion as keyof typeof colors]}>
-        {accion.charAt(0).toUpperCase() + accion.slice(1)}
-      </Badge>
-    )
-  }
-
-  const getModuleBadge = (modulo: string) => {
-    const colors = {
-      documentos: "bg-blue-100 text-blue-800",
-      usuarios: "bg-green-100 text-green-800",
-      configuracion: "bg-purple-100 text-purple-800",
-      reportes: "bg-orange-100 text-orange-800",
-      sistema: "bg-gray-100 text-gray-800",
-    }
-
-    return (
-      <Badge variant="outline" className={colors[modulo as keyof typeof colors]}>
-        {modulo.charAt(0).toUpperCase() + modulo.slice(1)}
-      </Badge>
-    )
-  }
 
   // Funciones para cargar datos
   const fetchAuditLogs = async () => {
@@ -302,6 +315,39 @@ export default function AuditoriaPage() {
     </div>
   )
 
+  const getActionBadge = (accion: string) => {
+    const colors = {
+      crear: "bg-green-100 text-green-800",
+      editar: "bg-blue-100 text-blue-800",
+      eliminar: "bg-red-100 text-red-800",
+      consultar: "bg-gray-100 text-gray-800",
+      login: "bg-purple-100 text-purple-800",
+      logout: "bg-orange-100 text-orange-800",
+    }
+
+    return (
+      <Badge className={colors[accion as keyof typeof colors]}>
+        {accion.charAt(0).toUpperCase() + accion.slice(1)}
+      </Badge>
+    )
+  }
+
+  const getModuleBadge = (modulo: string) => {
+    const colors = {
+      documentos: "bg-blue-100 text-blue-800",
+      usuarios: "bg-green-100 text-green-800",
+      configuracion: "bg-purple-100 text-purple-800",
+      reportes: "bg-orange-100 text-orange-800",
+      sistema: "bg-gray-100 text-gray-800",
+    }
+
+    return (
+      <Badge variant="outline" className={colors[modulo as keyof typeof colors]}>
+        {modulo.charAt(0).toUpperCase() + modulo.slice(1)}
+      </Badge>
+    )
+  }
+
   const AuditLogTab = () => (
     <Card>
       <CardHeader>
@@ -454,30 +500,24 @@ export default function AuditoriaPage() {
             </TableHeader>
             <TableBody>
               {userStats.length > 0 ? (
-                userStats.map((stat, index) => {
-                  const ultimaActividad = stat.ultimaactividad ? 
-                    new Date(stat.ultimaactividad).toLocaleString() : 
-                    'Sin registro'
-                  
-                  return (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{stat.usuario}</TableCell>
-                      <TableCell>
-                        <Badge variant="default">{stat.documentoscreados}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{stat.documentoseditados}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{stat.consultasrealizadas}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono">{stat.tiempoSesion}</TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {ultimaActividad}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
+                userStats.map((stat, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{stat.usuario}</TableCell>
+                    <TableCell>
+                      <Badge variant="default">{stat.documentoscreados}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{stat.documentoseditados}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{stat.consultasrealizadas}</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono">{stat.tiempoSesion}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                       {formatColombiaTime(stat.ultimaactividad)}
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-4">
@@ -493,7 +533,6 @@ export default function AuditoriaPage() {
   )
 
   const ProductivityTab = () => (
-    
     <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -791,7 +830,9 @@ export default function AuditoriaPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="font-medium">Fecha y Hora</Label>
-                  <p className="text-sm bg-muted p-2 rounded font-mono">{selectedLog.created_at}</p>
+                  <p className="text-sm bg-muted p-2 rounded font-mono">
+                    {formatColombiaTime(selectedLog.created_at)}
+                  </p>
                 </div>
               </div>
 

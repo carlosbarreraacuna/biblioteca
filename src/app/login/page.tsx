@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, BookOpen, Lock, User } from "lucide-react"
+import { Eye, EyeOff, Lock, User } from "lucide-react"
 import { useAuth } from '@/app/context/AuthContext';
 import { login } from '@/app/types/auth';
+import Image from "next/image"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
@@ -43,10 +44,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo y título */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <BookOpen className="h-8 w-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-full mb-4">
+            <Image src="/cardique.png" alt="" width={32} height={32} />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">BiblioSoft</h1>
+          <h1 className="text-3xl font-bold text-gray-900">CENDOC - CAR</h1>
           <p className="text-gray-600 mt-2">Sistema de Gestión de Biblioteca</p>
         </div>
 
@@ -103,7 +104,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isLoading}>
                 {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
               </Button>
             </form>
@@ -111,7 +112,7 @@ export default function LoginPage() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 ¿Olvidaste tu contraseña?{" "}
-                <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                <a href="#" className="text-green-600 hover:text-green-700 font-medium">
                   Recuperar
                 </a>
               </p>
@@ -120,9 +121,9 @@ export default function LoginPage() {
         </Card>
 
         {/* Información de prueba */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h3 className="font-medium text-blue-900 mb-2">Credenciales de prueba:</h3>
-          <p className="text-sm text-blue-700">
+        <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+          <h3 className="font-medium text-green-900 mb-2">Credenciales de prueba:</h3>
+          <p className="text-sm text-green-700">
             <strong>Email:</strong> admin@biblioteca.com
             <br />
             <strong>Contraseña:</strong> admin123
