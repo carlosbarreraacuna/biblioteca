@@ -58,7 +58,13 @@ export default function ConsultasPage() {
     const fetchDocuments = async () => {
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/bibliotecas`)
-        setDocuments(response.data)
+        // Asegúrate de que la respuesta sea un array
+        const docs = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data.data)
+            ? response.data.data
+            : []
+        setDocuments(docs)
       } catch (error) {
         console.error("Error al obtener documentos:", error)
       }
@@ -73,8 +79,12 @@ export default function ConsultasPage() {
       doc.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.autor.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.denominacion_numerica.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = filterType === "todos" || doc.tipo_documento === filterType
-    const matchesDenomination = filterDenomination === "todos" || doc.denominacion === filterDenomination
+
+    const matchesType =
+      filterType === "todos" || doc.tipo_documento.toLowerCase() === filterType.toLowerCase()
+
+    const matchesDenomination =
+      filterDenomination === "todos" || doc.denominacion.toLowerCase() === filterDenomination.toLowerCase()
 
     return matchesSearch && matchesType && matchesDenomination
   })
@@ -106,11 +116,18 @@ export default function ConsultasPage() {
 
     const labels = {
       libros: "Libros",
-      "libros_anillados": "libros Anillado",
+      "libros_anillados": "Libros Anillados",
       azs: "AZS",
     }
 
-    return <Badge variant={variants[tipo_documento as keyof typeof variants]}>{labels[tipo_documento as keyof typeof labels]}</Badge>
+    // Convertir el tipo de documento a minúsculas para asegurar que coincida con las claves
+    const tipoDocumentoNormalizado = tipo_documento.toLowerCase()
+
+    return (
+      <Badge variant={variants[tipoDocumentoNormalizado as keyof typeof variants]}>
+        {labels[tipoDocumentoNormalizado as keyof typeof labels]}
+      </Badge>
+    )
   }
 
   const getDenominationBadge = (denominacion: string) => {
