@@ -414,7 +414,7 @@ export default function ConsultasPage() {
                 <div className="space-y-2">
                   <Label htmlFor="edit-tipo">Tipo</Label>
                   <Select
-                    value={editingDocument.tipo_documento}
+                    value={editingDocument.tipo_documento.toLowerCase()} // Aseguramos que el valor sea consistente
                     onValueChange={(value: "libros" | "libros_anillados" | "azs") =>
                       setEditingDocument({ ...editingDocument, tipo_documento: value })
                     }
@@ -423,8 +423,8 @@ export default function ConsultasPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="libros">libros</SelectItem>
-                      <SelectItem value="libros_anillados">libros Anillado</SelectItem>
+                      <SelectItem value="libros">Libros</SelectItem>
+                      <SelectItem value="libros_anillados">Libros Anillados</SelectItem>
                       <SelectItem value="azs">AZS</SelectItem>
                     </SelectContent>
                   </Select>
