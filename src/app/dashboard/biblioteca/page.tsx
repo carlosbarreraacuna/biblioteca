@@ -177,9 +177,9 @@ export default function BibliotecaPage() {
                   <SelectValue placeholder="Selecciona el tipo de documento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="libros">libros</SelectItem>
-                  <SelectItem value="libros_anillados">libros Anillado</SelectItem>
-                  <SelectItem value="azs">AZS</SelectItem>
+                  <SelectItem value="LIBROS">LIBROS</SelectItem>
+                  <SelectItem value="LIBROS_ANILLADOS">LIBROS ANILLADOS</SelectItem>
+                  <SelectItem value="AZS">AZS</SelectItem>
                 </SelectContent>
               </Select>
             </div>
