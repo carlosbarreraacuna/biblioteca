@@ -101,7 +101,7 @@ export default function BibliotecaPage() {
       if (response.status === 201) {
         // Éxito: mostrar mensaje y redirigir
         alert("Documento guardado exitosamente!");
-        router.push('/consultas');
+        router.push('/dashboard/consultas');
       } else {
         setSaveError("Error inesperado al guardar el documento");
       }

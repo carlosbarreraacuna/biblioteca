@@ -18,15 +18,17 @@ import { Calendar } from "@/components/ui/calendar"
 
 // Interfaces
 interface AuditLog {
-  id: string
+  id: number
+  user_id: number
   usuario: string
   accion: "crear" | "editar" | "eliminar" | "consultar" | "login" | "logout"
   modulo: "documentos" | "usuarios" | "configuracion" | "reportes" | "sistema"
   descripcion: string
   detalles: string
   created_at: string
-  ip: string
-  navegador: string
+  ip_address: string | null
+  navegador: string | null
+  // Otros campos que puedas necesitar
 }
 
 interface UserStats {
@@ -138,28 +140,30 @@ export default function AuditoriaPage() {
 
   // Funciones para cargar datos
   const fetchAuditLogs = async () => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (filterAction !== "todas") params.append("accion", filterAction)
-    if (filterModule !== "todos") params.append("modulo", filterModule)
-    if (filterUser !== "todos") params.append("usuario", filterUser)
-    if (searchTerm) params.append("search", searchTerm)
+  setLoading(true)
+  const params = new URLSearchParams()
+  if (filterAction !== "todas") params.append("accion", filterAction)
+  if (filterModule !== "todos") params.append("modulo", filterModule)
+  if (filterUser !== "todos") params.append("usuario", filterUser)
+  if (searchTerm) params.append("search", searchTerm)
+  
+  const token = localStorage.getItem("token") || ""
+  
+  try {
+    const response = await fetch(`http://localhost:8000/api/audit-logs?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const data = await response.json()
     
-    const token = localStorage.getItem("token") || ""
-    
-    try {
-      const response = await fetch(`http://localhost:8000/api/audit-logs?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await response.json()
-      setAuditLogs(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error("Error fetching audit logs:", error)
-      setAuditLogs([])
-    } finally {
-      setLoading(false)
-    }
+    // Asegurarnos de extraer el array de logs de la propiedad 'data'
+    setAuditLogs(Array.isArray(data.data) ? data.data : [])
+  } catch (error) {
+    console.error("Error fetching audit logs:", error)
+    setAuditLogs([])
+  } finally {
+    setLoading(false)
   }
+}
 
   const fetchUserStats = async () => {
     const token = localStorage.getItem("token") || ""
@@ -431,48 +435,48 @@ export default function AuditoriaPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
-                    Cargando registros...
-                  </TableCell>
-                </TableRow>
-              ) : auditLogs.length > 0 ? (
-                auditLogs.map((log) => {
-                  const { date, time } = formatDateTime(log.created_at)
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-mono text-sm">{date}</TableCell>
-                      <TableCell className="font-mono text-sm">{time}</TableCell>
-                      <TableCell className="font-medium">{log.usuario}</TableCell>
-                      <TableCell>{getActionBadge(log.accion)}</TableCell>
-                      <TableCell>{getModuleBadge(log.modulo)}</TableCell>
-                      <TableCell className="max-w-xs truncate">{log.descripcion}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedLog(log)
-                            setIsViewDialogOpen(true)
-                          }}
-                          className="flex items-center gap-1"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Ver
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
-                    No se encontraron registros
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
+  {loading ? (
+    <TableRow>
+      <TableCell colSpan={7} className="text-center py-4">
+        Cargando registros...
+      </TableCell>
+    </TableRow>
+  ) : auditLogs.length > 0 ? (
+    auditLogs.map((log) => {
+      const { date, time } = formatDateTime(log.created_at)
+      return (
+        <TableRow key={log.id}>
+          <TableCell className="font-mono text-sm">{date}</TableCell>
+          <TableCell className="font-mono text-sm">{time}</TableCell>
+          <TableCell className="font-medium">{log.usuario}</TableCell>
+          <TableCell>{getActionBadge(log.accion)}</TableCell>
+          <TableCell>{getModuleBadge(log.modulo)}</TableCell>
+          <TableCell className="max-w-xs truncate">{log.descripcion}</TableCell>
+          <TableCell className="text-right">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedLog(log)
+                setIsViewDialogOpen(true)
+              }}
+              className="flex items-center gap-1"
+            >
+              <Eye className="h-4 w-4" />
+              Ver
+            </Button>
+          </TableCell>
+        </TableRow>
+      )
+    })
+  ) : (
+    <TableRow>
+      <TableCell colSpan={7} className="text-center py-4">
+        No se encontraron registros
+      </TableCell>
+    </TableRow>
+  )}
+</TableBody>
           </Table>
         </div>
       </CardContent>
@@ -816,61 +820,40 @@ export default function AuditoriaPage() {
       </Tabs>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detalles de la Actividad</DialogTitle>
-            <DialogDescription>Información completa del registro de auditoría</DialogDescription>
-          </DialogHeader>
-          {selectedLog && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="font-medium">Usuario</Label>
-                  <p className="text-sm bg-muted p-2 rounded">{selectedLog.usuario}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-medium">Fecha y Hora</Label>
-                  <p className="text-sm bg-muted p-2 rounded font-mono">
-                    {formatColombiaTime(selectedLog.created_at)}
-                  </p>
-                </div>
-              </div>
+  <DialogContent className="max-w-2xl">
+    <DialogHeader>
+      <DialogTitle>Detalles de la Actividad</DialogTitle>
+      <DialogDescription>Información completa del registro de auditoría</DialogDescription>
+    </DialogHeader>
+    {selectedLog && (
+      <div className="grid gap-4 py-4">
+        {/* ... otros campos ... */}
+        
+        <div className="space-y-2">
+          <Label className="font-medium">Detalles</Label>
+          <p className="text-sm bg-muted p-2 rounded">
+            {JSON.stringify(JSON.parse(selectedLog.detalles || "{}"), null, 2)}
+          </p>
+        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="font-medium">Acción</Label>
-                  <div className="flex items-center">{getActionBadge(selectedLog.accion)}</div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-medium">Módulo</Label>
-                  <div className="flex items-center">{getModuleBadge(selectedLog.modulo)}</div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-medium">Descripción</Label>
-                <p className="text-sm bg-muted p-2 rounded">{selectedLog.descripcion}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-medium">Detalles</Label>
-                <p className="text-sm bg-muted p-2 rounded">{selectedLog.detalles}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="font-medium">Dirección IP</Label>
-                  <p className="text-sm bg-muted p-2 rounded font-mono">{selectedLog.ip}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-medium">Navegador</Label>
-                  <p className="text-sm bg-muted p-2 rounded">{selectedLog.navegador}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="font-medium">Dirección IP</Label>
+            <p className="text-sm bg-muted p-2 rounded font-mono">
+              {selectedLog.ip_address || 'N/A'}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label className="font-medium">Navegador</Label>
+            <p className="text-sm bg-muted p-2 rounded">
+              {selectedLog.navegador || 'N/A'}
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
     </div>
   )
 }
