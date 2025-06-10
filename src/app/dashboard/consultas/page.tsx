@@ -22,7 +22,7 @@ import { Search, Eye, Edit, Download, BookOpen, FileText } from "lucide-react"
 interface Document {
   id: string
   denominacion_numerica: string
-  tipo_documento: "libros" | "libros_anillados" | "azs"
+  tipo_documento: "LIBROS" | "LIBROS_ANILLADOS" | "AZS"
   denominacion: "MI" | "CG" | "J" | "R" | "H"
   titulo: string
   autor: string
@@ -171,7 +171,7 @@ export default function ConsultasPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libros").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "LIBROS").length}</div>
           </CardContent>
         </Card>
 
@@ -180,7 +180,7 @@ export default function ConsultasPage() {
             <CardTitle className="text-sm font-medium">Libros Anillados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "libros_anillados").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "LIBROS_ANILLADOS").length}</div>
           </CardContent>
         </Card>
 
@@ -189,7 +189,7 @@ export default function ConsultasPage() {
             <CardTitle className="text-sm font-medium">AZS</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "azs").length}</div>
+            <div className="text-2xl font-bold">{documents.filter((d) => d.tipo_documento === "AZS").length}</div>
           </CardContent>
         </Card>
       </div>
