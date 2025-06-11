@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, ArrowLeft, ArrowRight, Save, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import paises from "@/app/paisesJson/paises.json"
 
 type DocumentType = "libros" | "libros_anillados" | "azs" | ""
 type Denomination = "MI" | "CG" | "J" | "R" | "H" | ""
@@ -387,18 +388,23 @@ export default function BibliotecaPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="pais">País *</Label>
-                <Input
-                  id="pais"
+                <Select
                   value={documentData.pais}
-                  onChange={(e) =>
-                    setDocumentData((prev) => ({
-                      ...prev,
-                      pais: e.target.value,
-                    }))
-                  }
-                  placeholder="País de publicación"
-                />
+                  onValueChange={(value) => setDocumentData((prev) => ({ ...prev, pais: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un país" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paises.paises_latinoamerica.map((pais: { id: number; nombre: string }) => (
+                      <SelectItem key={pais.id} value={pais.nombre}>
+                        {pais.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
             </div>
 
             <div className="flex justify-between">

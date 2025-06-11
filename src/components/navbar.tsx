@@ -14,13 +14,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/app/context/AuthContext"
 
 export function Navbar() {
   const router = useRouter()
+  const { logout } = useAuth()
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated")
-    localStorage.removeItem("user")
+    logout()
     router.push("/login")
   }
 

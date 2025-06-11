@@ -10,14 +10,16 @@ type AuthContextType = {
   isHydrated: boolean; // ⬅️ clave para saber cuándo está listo
   user: User | null,
   setUser: (user: User | null) => void,
+  logout: () => void, // <-- Agregamos logout
 };
 
 const AuthContext = createContext<AuthContextType>({
   token: null,
-  setToken: () => {},
+  setToken: () => { },
   isHydrated: false,
   user: null,
-  setUser: () => {},
+  setUser: () => { },
+  logout: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -31,9 +33,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (typeof window !== 'undefined') {
       if (newToken) {
         localStorage.setItem('token', newToken);
+        // Fetch user info inmediatamente tras login
+        fetch('http://localhost:8000/api/usuariosrol', {
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${newToken}`,
+          },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            setUser(data);
+          })
+          .catch(() => {
+            setUser(null);
+          });
       } else {
         localStorage.removeItem('token');
+        setUser(null);
       }
+    }
+  };
+
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
     }
   };
 
@@ -41,12 +66,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (typeof window !== 'undefined') {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
-        setTokenState(storedToken);      // solo lee del storage
-        setAuthToken(storedToken);       // configura axios
+        setTokenState(storedToken);
+        setAuthToken(storedToken);
+
+        // 🔁 Cargar datos del usuario
+        fetch('http://localhost:8000/api/usuariosrol', {
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+          },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            setUser(data); // 👈 asegura que venga el campo 'role'
+          })
+          .catch(() => {
+            setUser(null);
+          });
       }
-      setIsHydrated(true); // ✅ cuando ya cargó
+      setIsHydrated(true);
     }
   }, []);
+
 
   // No renderizar nada hasta que esté hidratado (opcional: un loader)
   if (!isHydrated) {
@@ -54,7 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ token, setToken, isHydrated, user, setUser }}>
+    <AuthContext.Provider value={{ token, setToken, isHydrated, user, setUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

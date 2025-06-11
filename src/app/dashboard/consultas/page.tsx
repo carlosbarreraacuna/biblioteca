@@ -418,9 +418,9 @@ export default function ConsultasPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="LIBROS">Libros</SelectItem>
-                      <SelectItem value="LIBROS_ANILLADOS">Libros Anillados</SelectItem>
-                      <SelectItem value="AZS">AZS</SelectItem>
+                      <SelectItem value="libros">Libros</SelectItem>
+                      <SelectItem value="libros_anillados">Libros Anillados</SelectItem>
+                      <SelectItem value="azs">AZS</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
