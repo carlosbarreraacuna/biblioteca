@@ -181,11 +181,6 @@ export default function UsuariosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Gestión de Usuarios</h1>
-        <p className="text-muted-foreground">Administra los usuarios del sistema de biblioteca</p>
-      </div>
-
       {/* Estadísticas */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>

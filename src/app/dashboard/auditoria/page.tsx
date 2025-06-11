@@ -786,17 +786,45 @@ export default function AuditoriaPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Resumen de productividad */}
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Usuario Más Productivo</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">Juan Pérez</div>
+                    <p className="text-xs text-muted-foreground">11 documentos hoy</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Tipo Más Digitado</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">Libros</div>
+                    <p className="text-xs text-muted-foreground">10 documentos hoy</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Promedio Diario</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">4.2</div>
+                    <p className="text-xs text-muted-foreground">docs por usuario</p>
+                  </CardContent>
+                </Card>
+              </div>
       </CardContent>
     </Card>
   )
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Auditoría y Trazabilidad</h1>
-        <p className="text-muted-foreground">Monitoreo de actividades y estadísticas de usuarios del sistema</p>
-      </div>
-
       <StatsCards />
 
       <Tabs defaultValue="auditoria" className="space-y-4">

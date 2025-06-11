@@ -56,11 +56,6 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Configuración del Sistema</h1>
-        <p className="text-muted-foreground">Administra la configuración general del sistema de biblioteca</p>
-      </div>
-
       <div className="grid gap-6">
         {/* Configuración de Tema y Colores */}
         <Card>

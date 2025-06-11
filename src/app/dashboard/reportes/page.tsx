@@ -8,11 +8,6 @@ import { Calendar, Download, FileText, Users, BookOpen, TrendingUp, BarChart3, P
 export default function ReportesPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Reportes y Estadísticas</h1>
-        <p className="text-muted-foreground">Genera reportes y visualiza estadísticas del sistema</p>
-      </div>
-
       {/* Métricas principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

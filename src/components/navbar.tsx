@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Breadcrumb } from "@/components/breadcrumb"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,8 +30,8 @@ export function Navbar() {
 
       <div className="flex-1 flex items-center gap-4">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar documentos..." className="pl-10" />
+          
+         <Breadcrumb/>
         </div>
       </div>
 
