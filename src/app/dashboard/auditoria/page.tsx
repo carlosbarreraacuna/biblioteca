@@ -28,7 +28,6 @@ interface AuditLog {
   created_at: string
   ip_address: string | null
   navegador: string | null
-  // Otros campos que puedas necesitar
 }
 
 interface UserStats {
@@ -60,7 +59,6 @@ interface PeriodTotals {
 const formatColombiaTime = (isoString: string) => {
   if (!isoString) return 'Sin registro';
 
-  // Si la cadena es tipo "YYYY-MM-DD HH:mm:ss", conviértela a ISO con Z (UTC)
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(isoString)) {
     const isoWithZ = isoString.replace(' ', 'T') + 'Z';
     return new Date(isoWithZ).toLocaleString('es-CO', {
@@ -75,7 +73,6 @@ const formatColombiaTime = (isoString: string) => {
     });
   }
 
-  // Si viene en formato ISO estándar, usar la conversión normal
   return new Date(isoString).toLocaleString('es-CO', {
     year: 'numeric',
     month: '2-digit',
@@ -88,7 +85,6 @@ const formatColombiaTime = (isoString: string) => {
   });
 };
 
-// Función para separar fecha y hora en hora de Colombia
 const formatDateTime = (isoString: string) => {
   if (!isoString) return { date: 'N/A', time: 'N/A' };
   
@@ -134,45 +130,70 @@ export default function AuditoriaPage() {
   const [dateTo, setDateTo] = useState<Date | undefined>(new Date())
   const [selectedUser, setSelectedUser] = useState<string>("todos")
 
+  // Nuevos estados para paginación
+  const [auditLogsPage, setAuditLogsPage] = useState(1)
+  const [auditLogsPerPage, setAuditLogsPerPage] = useState(10)
+  const [auditLogsTotalPages, setAuditLogsTotalPages] = useState(1)
+  const [auditLogsTotalItems, setAuditLogsTotalItems] = useState(0)
+
+  const [userStatsPage, setUserStatsPage] = useState(1)
+  const [userStatsPerPage, setUserStatsPerPage] = useState(5)
+  const [userStatsTotalPages, setUserStatsTotalPages] = useState(1)
+  const [userStatsTotalItems, setUserStatsTotalItems] = useState(0)
+
+  const [dailyStatsPage, setDailyStatsPage] = useState(1)
+  const [dailyStatsPerPage, setDailyStatsPerPage] = useState(10)
+  const [dailyStatsTotalPages, setDailyStatsTotalPages] = useState(1)
+  const [dailyStatsTotalItems, setDailyStatsTotalItems] = useState(0)
+
   // Obtener usuarios únicos para los filtros
   const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.usuario)))
   const uniqueDailyUsers = Array.from(new Set(dailyStats.map(stat => stat.user_id)))
 
   // Funciones para cargar datos
   const fetchAuditLogs = async () => {
-  setLoading(true)
-  const params = new URLSearchParams()
-  if (filterAction !== "todas") params.append("accion", filterAction)
-  if (filterModule !== "todos") params.append("modulo", filterModule)
-  if (filterUser !== "todos") params.append("usuario", filterUser)
-  if (searchTerm) params.append("search", searchTerm)
-  
-  const token = localStorage.getItem("token") || ""
-  
-  try {
-    const response = await fetch(`http://localhost:8000/api/audit-logs?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    const data = await response.json()
+    setLoading(true)
+    const params = new URLSearchParams()
+    if (filterAction !== "todas") params.append("accion", filterAction)
+    if (filterModule !== "todos") params.append("modulo", filterModule)
+    if (filterUser !== "todos") params.append("usuario", filterUser)
+    if (searchTerm) params.append("search", searchTerm)
+    params.append("page", auditLogsPage.toString())
+    params.append("per_page", auditLogsPerPage.toString())
     
-    // Asegurarnos de extraer el array de logs de la propiedad 'data'
-    setAuditLogs(Array.isArray(data.data) ? data.data : [])
-  } catch (error) {
-    console.error("Error fetching audit logs:", error)
-    setAuditLogs([])
-  } finally {
-    setLoading(false)
-  }
-}
-
-  const fetchUserStats = async () => {
     const token = localStorage.getItem("token") || ""
+    
     try {
-      const response = await fetch("http://localhost:8000/api/audit-logs/user-stats", {
+      const response = await fetch(`http://localhost:8000/api/audit-logs?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await response.json()
-      setUserStats(Array.isArray(data) ? data : [])
+      
+      setAuditLogs(Array.isArray(data.data) ? data.data : [])
+      setAuditLogsTotalPages(data.last_page || 1)
+      setAuditLogsTotalItems(data.total || 0)
+    } catch (error) {
+      console.error("Error fetching audit logs:", error)
+      setAuditLogs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchUserStats = async () => {
+    const token = localStorage.getItem("token") || ""
+    const params = new URLSearchParams()
+    params.append("page", userStatsPage.toString())
+    params.append("per_page", userStatsPerPage.toString())
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/audit-logs/user-stats?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await response.json()
+      setUserStats(Array.isArray(data.data) ? data.data : [])
+      setUserStatsTotalPages(data.last_page || 1)
+      setUserStatsTotalItems(data.total || 0)
     } catch (error) {
       console.error("Error fetching user stats:", error)
       setUserStats([])
@@ -186,6 +207,8 @@ export default function AuditoriaPage() {
     if (dateFrom) params.append('fecha_desde', format(dateFrom, 'yyyy-MM-dd'))
     if (dateTo) params.append('fecha_hasta', format(dateTo, 'yyyy-MM-dd'))
     if (selectedUser !== 'todos') params.append('usuario', selectedUser)
+    params.append("page", dailyStatsPage.toString())
+    params.append("per_page", dailyStatsPerPage.toString())
 
     try {
       const response = await fetch(`http://localhost:8000/api/audit-logs/daily-stats?${params.toString()}`, {
@@ -193,7 +216,9 @@ export default function AuditoriaPage() {
       })
       const { data, period_totals } = await response.json()
       
-      setDailyStats(Array.isArray(data) ? data : [])
+      setDailyStats(Array.isArray(data.data) ? data.data : [])
+      setDailyStatsTotalPages(data.last_page || 1)
+      setDailyStatsTotalItems(data.total || 0)
       setPeriodTotals({
         libros: period_totals?.libros || 0,
         libros_anillados: period_totals?.libros_anillados || 0,
@@ -241,15 +266,15 @@ export default function AuditoriaPage() {
   // Efectos
   useEffect(() => {
     fetchAuditLogs()
-  }, [filterAction, filterModule, filterUser, searchTerm])
+  }, [filterAction, filterModule, filterUser, searchTerm, auditLogsPage, auditLogsPerPage])
 
   useEffect(() => {
     fetchUserStats()
-  }, [])
+  }, [userStatsPage, userStatsPerPage])
 
   useEffect(() => {
     fetchDailyStats()
-  }, [dateFrom, dateTo, selectedUser])
+  }, [dateFrom, dateTo, selectedUser, dailyStatsPage, dailyStatsPerPage])
 
   // Cálculos
   const activitiesToday = auditLogs.filter(log => {
@@ -269,6 +294,88 @@ export default function AuditoriaPage() {
         return acc + (hours * 60 + minutes)
       }, 0) / userStats.length + 'm'
     : '0m'
+
+  // Componente de paginación reutilizable
+  type PaginationControlsProps = {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    onPageChange: (page: number) => void;
+    onPerPageChange: (perPage: number) => void;
+  };
+
+  const PaginationControls = ({ 
+    currentPage, 
+    totalPages, 
+    totalItems,
+    itemsPerPage,
+    onPageChange,
+    onPerPageChange
+  }: PaginationControlsProps) => (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+      <div className="text-sm text-muted-foreground">
+        Mostrando {(currentPage - 1) * itemsPerPage + 1} - 
+        {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} registros
+      </div>
+      
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Label className="text-sm">Por página:</Label>
+          <Select 
+            value={itemsPerPage.toString()} 
+            onValueChange={(value) => onPerPageChange(Number(value))}
+          >
+            <SelectTrigger className="w-[80px]">
+              <SelectValue placeholder={itemsPerPage} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+          >
+            Anterior
+          </Button>
+          
+          <div className="flex items-center gap-1">
+            <span className="px-2 py-1 text-sm">Página</span>
+            <Input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={currentPage}
+              onChange={(e) => {
+                const page = Math.min(Math.max(1, Number(e.target.value)), totalPages)
+                onPageChange(page)
+              }}
+              className="w-16 text-center"
+            />
+            <span className="px-2 py-1 text-sm">de {totalPages}</span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 
   // Componentes
   const StatsCards = () => (
@@ -435,50 +542,63 @@ export default function AuditoriaPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-  {loading ? (
-    <TableRow>
-      <TableCell colSpan={7} className="text-center py-4">
-        Cargando registros...
-      </TableCell>
-    </TableRow>
-  ) : auditLogs.length > 0 ? (
-    auditLogs.map((log) => {
-      const { date, time } = formatDateTime(log.created_at)
-      return (
-        <TableRow key={log.id}>
-          <TableCell className="font-mono text-sm">{date}</TableCell>
-          <TableCell className="font-mono text-sm">{time}</TableCell>
-          <TableCell className="font-medium">{log.usuario}</TableCell>
-          <TableCell>{getActionBadge(log.accion)}</TableCell>
-          <TableCell>{getModuleBadge(log.modulo)}</TableCell>
-          <TableCell className="max-w-xs truncate">{log.descripcion}</TableCell>
-          <TableCell className="text-right">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedLog(log)
-                setIsViewDialogOpen(true)
-              }}
-              className="flex items-center gap-1"
-            >
-              <Eye className="h-4 w-4" />
-              Ver
-            </Button>
-          </TableCell>
-        </TableRow>
-      )
-    })
-  ) : (
-    <TableRow>
-      <TableCell colSpan={7} className="text-center py-4">
-        No se encontraron registros
-      </TableCell>
-    </TableRow>
-  )}
-</TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-4">
+                    Cargando registros...
+                  </TableCell>
+                </TableRow>
+              ) : auditLogs.length > 0 ? (
+                auditLogs.map((log) => {
+                  const { date, time } = formatDateTime(log.created_at)
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-mono text-sm">{date}</TableCell>
+                      <TableCell className="font-mono text-sm">{time}</TableCell>
+                      <TableCell className="font-medium">{log.usuario}</TableCell>
+                      <TableCell>{getActionBadge(log.accion)}</TableCell>
+                      <TableCell>{getModuleBadge(log.modulo)}</TableCell>
+                      <TableCell className="max-w-xs truncate">{log.descripcion}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedLog(log)
+                            setIsViewDialogOpen(true)
+                          }}
+                          className="flex items-center gap-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Ver
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-4">
+                    No se encontraron registros
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
           </Table>
         </div>
+        
+        {/* Paginación para Audit Logs */}
+        <PaginationControls
+          currentPage={auditLogsPage}
+          totalPages={auditLogsTotalPages}
+          totalItems={auditLogsTotalItems}
+          itemsPerPage={auditLogsPerPage}
+          onPageChange={setAuditLogsPage}
+          onPerPageChange={(value) => {
+            setAuditLogsPerPage(value)
+            setAuditLogsPage(1)
+          }}
+        />
       </CardContent>
     </Card>
   )
@@ -532,6 +652,19 @@ export default function AuditoriaPage() {
             </TableBody>
           </Table>
         </div>
+        
+        {/* Paginación para User Stats */}
+        <PaginationControls
+          currentPage={userStatsPage}
+          totalPages={userStatsTotalPages}
+          totalItems={userStatsTotalItems}
+          itemsPerPage={userStatsPerPage}
+          onPageChange={setUserStatsPage}
+          onPerPageChange={(value) => {
+            setUserStatsPerPage(value)
+            setUserStatsPage(1)
+          }}
+        />
       </CardContent>
     </Card>
   )
@@ -786,39 +919,52 @@ export default function AuditoriaPage() {
             </TableBody>
           </Table>
         </div>
+        
+        {/* Paginación para Daily Stats */}
+        <PaginationControls
+          currentPage={dailyStatsPage}
+          totalPages={dailyStatsTotalPages}
+          totalItems={dailyStatsTotalItems}
+          itemsPerPage={dailyStatsPerPage}
+          onPageChange={setDailyStatsPage}
+          onPerPageChange={(value) => {
+            setDailyStatsPerPage(value)
+            setDailyStatsPage(1)
+          }}
+        />
 
         {/* Resumen de productividad */}
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Usuario Más Productivo</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">Juan Pérez</div>
-                    <p className="text-xs text-muted-foreground">11 documentos hoy</p>
-                  </CardContent>
-                </Card>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Usuario Más Productivo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Juan Pérez</div>
+              <p className="text-xs text-muted-foreground">11 documentos hoy</p>
+            </CardContent>
+          </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Tipo Más Digitado</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">Libros</div>
-                    <p className="text-xs text-muted-foreground">10 documentos hoy</p>
-                  </CardContent>
-                </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Tipo Más Digitado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Libros</div>
+              <p className="text-xs text-muted-foreground">10 documentos hoy</p>
+            </CardContent>
+          </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Promedio Diario</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">4.2</div>
-                    <p className="text-xs text-muted-foreground">docs por usuario</p>
-                  </CardContent>
-                </Card>
-              </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Promedio Diario</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">4.2</div>
+              <p className="text-xs text-muted-foreground">docs por usuario</p>
+            </CardContent>
+          </Card>
+        </div>
       </CardContent>
     </Card>
   )
@@ -848,40 +994,38 @@ export default function AuditoriaPage() {
       </Tabs>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-  <DialogContent className="max-w-2xl">
-    <DialogHeader>
-      <DialogTitle>Detalles de la Actividad</DialogTitle>
-      <DialogDescription>Información completa del registro de auditoría</DialogDescription>
-    </DialogHeader>
-    {selectedLog && (
-      <div className="grid gap-4 py-4">
-        {/* ... otros campos ... */}
-        
-        <div className="space-y-2">
-          <Label className="font-medium">Detalles</Label>
-          <p className="text-sm bg-muted p-2 rounded">
-            {JSON.stringify(JSON.parse(selectedLog.detalles || "{}"), null, 2)}
-          </p>
-        </div>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalles de la Actividad</DialogTitle>
+            <DialogDescription>Información completa del registro de auditoría</DialogDescription>
+          </DialogHeader>
+          {selectedLog && (
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label className="font-medium">Detalles</Label>
+                <p className="text-sm bg-muted p-2 rounded">
+                  {JSON.stringify(JSON.parse(selectedLog.detalles || "{}"), null, 2)}
+                </p>
+              </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="font-medium">Dirección IP</Label>
-            <p className="text-sm bg-muted p-2 rounded font-mono">
-              {selectedLog.ip_address || 'N/A'}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label className="font-medium">Navegador</Label>
-            <p className="text-sm bg-muted p-2 rounded">
-              {selectedLog.navegador || 'N/A'}
-            </p>
-          </div>
-        </div>
-      </div>
-    )}
-  </DialogContent>
-</Dialog>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="font-medium">Dirección IP</Label>
+                  <p className="text-sm bg-muted p-2 rounded font-mono">
+                    {selectedLog.ip_address || 'N/A'}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-medium">Navegador</Label>
+                  <p className="text-sm bg-muted p-2 rounded">
+                    {selectedLog.navegador || 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

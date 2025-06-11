@@ -38,24 +38,15 @@ type User = {
   updated_at?: string
 }
 
-type UsersResponse = {
-  data: {
-    data: User[]
-  }
-  current_page: number
-  last_page: number
-  prev_page_url: string | null
-  next_page_url: string | null
-}
-
 export default function UsuariosPage() {
-  const [users, setUsers] = useState<UsersResponse | null>(null)
+  const [allUsers, setAllUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRole, setFilterRole] = useState<string>("todos")
   const [filterStatus, setFilterStatus] = useState<string>("todos")
   const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [refreshFlag, setRefreshFlag] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -73,10 +64,21 @@ export default function UsuariosPage() {
       try {
         setLoading(true)
         const token = localStorage.getItem("token")
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/usuarios?page=${currentPage}`, {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        setUsers(response.data)
+        
+        // Obtener todos los usuarios
+        let usersArray: User[] = []
+        if (Array.isArray(response.data)) {
+          usersArray = response.data
+        } else if (response.data && Array.isArray(response.data.data)) {
+          usersArray = response.data.data
+        } else {
+          throw new Error("Formato de respuesta no válido")
+        }
+        
+        setAllUsers(usersArray)
         setError(null)
       } catch (err) {
         console.error("Error fetching users:", err)
@@ -86,7 +88,7 @@ export default function UsuariosPage() {
       }
     }
     fetchUsers()
-  }, [currentPage, refreshFlag])
+  }, [refreshFlag])
 
   const handleRefresh = () => setRefreshFlag((prev) => !prev)
 
@@ -146,26 +148,37 @@ export default function UsuariosPage() {
     }
   }
 
-  // Filtrar usuarios
-  const filteredUsers = users?.data?.data
-  ? users.data.data.filter((user) => {
-      const username = user.username || "";
-      const email = user.email || "";
-      const matchesSearch =
-        username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole =
-        filterRole === "todos" ||
-        (filterRole === "admin" && user.is_admin) ||
-        (filterRole === "usuario" && !user.is_admin);
-      const matchesStatus =
-        filterStatus === "todos" ||
-        (filterStatus === "activo" && user.estado) ||
-        (filterStatus === "inactivo" && !user.estado);
+  // Filtrar usuarios en frontend
+  const filteredUsers = allUsers.filter((user) => {
+    const username = user.username || ""
+    const email = user.email || ""
+    const matchesSearch =
+      username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesRole =
+      filterRole === "todos" ||
+      (filterRole === "admin" && user.is_admin) ||
+      (filterRole === "usuario" && !user.is_admin)
+    const matchesStatus =
+      filterStatus === "todos" ||
+      (filterStatus === "activo" && user.estado) ||
+      (filterStatus === "inactivo" && !user.estado)
 
-      return matchesSearch && matchesRole && matchesStatus;
-    })
-  : [];
+    return matchesSearch && matchesRole && matchesStatus
+  })
+
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Ajustar página si es necesario
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [filteredUsers, itemsPerPage, currentPage, totalPages])
 
   const getRoleBadge = (isAdmin: boolean) => {
     return <Badge variant={isAdmin ? "destructive" : "secondary"}>{isAdmin ? "Administrador" : "Usuario"}</Badge>
@@ -175,9 +188,9 @@ export default function UsuariosPage() {
     return <Badge variant={estado ? "default" : "secondary"}>{estado ? "Activo" : "Inactivo"}</Badge>
   }
 
-  const totalUsers = users?.data?.data?.length || 0
-  const adminUsers = users?.data?.data?.filter((u) => u.is_admin).length || 0
-  const activeUsers = users?.data?.data?.filter((u) => u.estado).length || 0
+  const totalUsers = allUsers.length
+  const adminUsers = allUsers.filter((u) => u.is_admin).length
+  const activeUsers = allUsers.filter((u) => u.estado).length
 
   return (
     <div className="space-y-6">
@@ -282,7 +295,7 @@ export default function UsuariosPage() {
                       <Label htmlFor="rol">Rol</Label>
                       <Select
                         value={newUser.is_admin ? "admin" : "usuario"}
-                        onValueChange={(value) => setNewUser({ ...newUser, is_admin: value === "true" })}
+                        onValueChange={(value) => setNewUser({ ...newUser, is_admin: value === "admin" })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -353,6 +366,67 @@ export default function UsuariosPage() {
             </div>
           )}
 
+          {/* Controles de paginación - ARRIBA DE LA TABLA */}
+          {filteredUsers.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-muted-foreground">Usuarios por página</p>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value))
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 10, 20, 30, 50].map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center space-x-6 lg:space-x-8">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando{" "}
+                  {filteredUsers.length === 0
+                    ? 0
+                    : `${indexOfFirstItem + 1}-${Math.min(
+                        indexOfLastItem,
+                        filteredUsers.length
+                      )}`}{" "}
+                  de {filteredUsers.length} usuarios
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <div className="flex items-center justify-center text-sm font-medium">
+                    Página {currentPage} de {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Tabla de usuarios */}
           <div className="rounded-md border">
             <Table>
@@ -388,7 +462,7 @@ export default function UsuariosPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  currentUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell>{user.email}</TableCell>
@@ -426,31 +500,6 @@ export default function UsuariosPage() {
               </TableBody>
             </Table>
           </div>
-
-          {/* Paginación */}
-          {users && (
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-sm text-muted-foreground">
-                Página {users.current_page} de {users.last_page}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  disabled={!users.prev_page_url || loading}
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                >
-                  ⟨ Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={!users.next_page_url || loading}
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                >
-                  Siguiente ⟩
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 

@@ -34,8 +34,6 @@ interface Document {
   archivo: string
 }
 
-
-
 const denominationLabels = {
   MI: "Memoria Institucional",
   CG: "Colección General",
@@ -53,6 +51,10 @@ export default function ConsultasPage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -88,6 +90,19 @@ export default function ConsultasPage() {
 
     return matchesSearch && matchesType && matchesDenomination
   })
+
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage) || 1
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentDocuments = filteredDocuments.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Ajustar página si es necesario
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [filteredDocuments, itemsPerPage])
 
   const handleViewDocument = (document: Document) => {
     setSelectedDocument(document)
@@ -245,6 +260,67 @@ export default function ConsultasPage() {
             </Select>
           </div>
 
+          {/* Controles de paginación - AHORA ARRIBA DE LA TABLA */}
+          {filteredDocuments.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-muted-foreground">Documentos por página</p>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value))
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 10, 20, 30, 50].map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center space-x-6 lg:space-x-8">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando{" "}
+                  {filteredDocuments.length === 0
+                    ? 0
+                    : `${indexOfFirstItem + 1}-${Math.min(
+                        indexOfLastItem,
+                        filteredDocuments.length
+                      )}`}{" "}
+                  de {filteredDocuments.length} documentos
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <div className="flex items-center justify-center text-sm font-medium">
+                    Página {currentPage} de {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Tabla */}
           <div className="rounded-md border">
             <Table>
@@ -259,7 +335,7 @@ export default function ConsultasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDocuments.map((document) => (
+                {currentDocuments.map((document) => (
                   <TableRow key={document.id}>
                     <TableCell className="font-medium">{document.denominacion_numerica}</TableCell>
                     <TableCell className="max-w-xs truncate">{document.titulo}</TableCell>
