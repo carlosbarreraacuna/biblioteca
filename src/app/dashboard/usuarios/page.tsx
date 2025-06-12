@@ -56,6 +56,7 @@ export default function UsuariosPage() {
     email: "",
     password: "",
     is_admin: false,
+    role: "", // Por defecto, el rol es Usuario
     estado: true,
   })
 
@@ -67,7 +68,7 @@ export default function UsuariosPage() {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        
+
         // Obtener todos los usuarios
         let usersArray: User[] = []
         if (Array.isArray(response.data)) {
@@ -77,7 +78,7 @@ export default function UsuariosPage() {
         } else {
           throw new Error("Formato de respuesta no válido")
         }
-        
+
         setAllUsers(usersArray)
         setError(null)
       } catch (err) {
@@ -98,7 +99,7 @@ export default function UsuariosPage() {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/usuarios`, newUser, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      setNewUser({ username: "", email: "", password: "", is_admin: false, estado: true })
+      setNewUser({ username: "", email: "", password: "", is_admin: false, role:"" ,estado: true })
       setIsCreateDialogOpen(false)
       handleRefresh()
     } catch (err) {
@@ -294,17 +295,18 @@ export default function UsuariosPage() {
                     <div className="space-y-2">
                       <Label htmlFor="rol">Rol</Label>
                       <Select
-                        value={newUser.is_admin ? "admin" : "usuario"}
-                        onValueChange={(value) => setNewUser({ ...newUser, is_admin: value === "admin" })}
+                        value={newUser.role}
+                        onValueChange={(value) => setNewUser({ ...newUser, role: value })}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Selecciona un rol" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="usuario">Usuario</SelectItem>
-                          <SelectItem value="admin">Administrador</SelectItem>
+                          <SelectItem value="Admin">Administrador</SelectItem>
+                          <SelectItem value="Digitador">Digitador</SelectItem>
                         </SelectContent>
                       </Select>
+
                     </div>
                   </div>
                   <DialogFooter>
@@ -390,16 +392,16 @@ export default function UsuariosPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex items-center space-x-6 lg:space-x-8">
                 <div className="text-sm text-muted-foreground">
                   Mostrando{" "}
                   {filteredUsers.length === 0
                     ? 0
                     : `${indexOfFirstItem + 1}-${Math.min(
-                        indexOfLastItem,
-                        filteredUsers.length
-                      )}`}{" "}
+                      indexOfLastItem,
+                      filteredUsers.length
+                    )}`}{" "}
                   de {filteredUsers.length} usuarios
                 </div>
                 <div className="flex items-center space-x-2">
