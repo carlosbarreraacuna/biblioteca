@@ -18,6 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Search, Eye, Edit, Download, BookOpen, FileText } from "lucide-react"
+import axios from "axios"
 
 interface Document {
   id: string
@@ -51,7 +52,7 @@ export default function ConsultasPage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
-  
+
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -121,6 +122,44 @@ export default function ConsultasPage() {
       setEditingDocument(null)
     }
   }
+
+  const handleDescargarPDF = async (id: any) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/bibliotecas/${id}/descargar`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        }
+      );
+
+      // Obtener el nombre del archivo desde content-disposition
+      const disposition = response.headers['content-disposition'];
+      let filename = 'documento.pdf';
+      
+      if (disposition && disposition.includes('filename=')) {
+        filename = decodeURIComponent(disposition.split('filename*=UTF-8\'')[1] || disposition.split('filename=')[1]);
+      }
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert("Error al descargar el archivo");
+      console.error("Descarga fallida:", error);
+    }
+  };
+
+
 
   const getTypeBadge = (tipo_documento: string) => {
     const variants = {
@@ -284,16 +323,16 @@ export default function ConsultasPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex items-center space-x-6 lg:space-x-8">
                 <div className="text-sm text-muted-foreground">
                   Mostrando{" "}
                   {filteredDocuments.length === 0
                     ? 0
                     : `${indexOfFirstItem + 1}-${Math.min(
-                        indexOfLastItem,
-                        filteredDocuments.length
-                      )}`}{" "}
+                      indexOfLastItem,
+                      filteredDocuments.length
+                    )}`}{" "}
                   de {filteredDocuments.length} documentos
                 </div>
                 <div className="flex items-center space-x-2">
@@ -437,13 +476,13 @@ export default function ConsultasPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="font-medium">Fecha de Registro</Label>
-                    <p className="text-sm bg-muted p-2 rounded">
+                  <p className="text-sm bg-muted p-2 rounded">
                     {new Date(selectedDocument.created_at).toLocaleDateString("es-ES", {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
                     })}
-                    </p>
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-medium">Archivo</Label>
@@ -456,7 +495,7 @@ export default function ConsultasPage() {
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Cerrar
             </Button>
-            <Button onClick={() => alert("Función de descarga no implementada")}>
+            <Button onClick={() => selectedDocument && handleDescargarPDF(selectedDocument.id)}>
               <Download className="mr-2 h-4 w-4" />
               Descargar PDF
             </Button>
