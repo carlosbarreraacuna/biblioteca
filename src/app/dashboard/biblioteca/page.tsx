@@ -165,6 +165,10 @@ export default function BibliotecaPage() {
   const canProceedToStep3 = documentData.titulo && documentData.autor && documentData.año && documentData.pais
   const canSave = documentData.tomos.every(tomo => tomo.archivo !== null)
 
+  //funcuion to generate years from 1900 to current year
+  const currentYear = new Date().getFullYear();
+const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
+
   return (
     <div className="max-w-full space-y-6">
       <Card>
@@ -385,21 +389,23 @@ export default function BibliotecaPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="año">Año *</Label>
-                <Input
-                  id="año"
-                  type="number"
-                  value={documentData.año}
-                  onChange={(e) => {
-                    let value = e.target.value.replace(/\D/g, "").slice(0, 4);
-                    setDocumentData((prev) => ({ ...prev, año: value }));
-                  }}
-                  placeholder="Año de publicación"
-                  maxLength={4}
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                />
-              </div>
+  <Label htmlFor="año">Año *</Label>
+  <Select
+    value={documentData.año}
+    onValueChange={(value) => setDocumentData(prev => ({ ...prev, año: value }))}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Selecciona un año" />
+    </SelectTrigger>
+    <SelectContent className="max-h-60 overflow-y-auto">
+      {years.map(year => (
+        <SelectItem key={year} value={String(year)}>
+          {year}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 
               <div className="space-y-2">
                 <Label htmlFor="pais">País *</Label>
