@@ -8,12 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, ArrowLeft, ArrowRight, Save, Loader2 } from "lucide-react";
+import { Upload, ArrowLeft, ArrowRight, Save, Loader2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import paises from "@/app/paisesJson/paises.json"
 
 type DocumentType = "libros" | "libros_anillados" | "azs" | ""
 type Denomination = "MI" | "CG" | "J" | "R" | "H" | ""
+
+interface Tomo {
+  numero: number | ""
+  archivo: File | null
+}
 
 interface DocumentData {
   type: DocumentType
@@ -22,10 +27,9 @@ interface DocumentData {
   titulo: string
   autor: string
   editorial: string
-  tomo: number
   año: string
   pais: string
-  archivo: File | null
+  tomos: Tomo[]
 }
 
 const denominationLabels = {
@@ -49,10 +53,9 @@ export default function BibliotecaPage() {
     titulo: "",
     autor: "",
     editorial: "",
-    tomo: 0,
     año: "",
     pais: "",
-    archivo: null,
+    tomos: [{ numero: "", archivo: null }], // Inicializar con un tomo vacío
   })
 
   const handleDenominationChange = (value: Denomination) => {
@@ -63,73 +66,108 @@ export default function BibliotecaPage() {
     }))
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null
-    setDocumentData((prev) => ({ ...prev, archivo: file }))
+  const handleAddTomo = () => {
+    setDocumentData(prev => ({
+      ...prev,
+      tomos: [...prev.tomos, { numero: "", archivo: null }]
+    }))
+  }
+
+  const handleRemoveTomo = (index: number) => {
+    if (documentData.tomos.length <= 1) return
+    setDocumentData(prev => ({
+      ...prev,
+      tomos: prev.tomos.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleTomoNumberChange = (index: number, value: string) => {
+    const newTomos = [...documentData.tomos]
+    newTomos[index] = {
+      ...newTomos[index],
+      numero: value === "" ? "" : Number(value)
+    }
+    setDocumentData(prev => ({ ...prev, tomos: newTomos }))
+  }
+
+  const handleTomoFileChange = (index: number, file: File | null) => {
+    const newTomos = [...documentData.tomos]
+    newTomos[index] = {
+      ...newTomos[index],
+      archivo: file
+    }
+    setDocumentData(prev => ({ ...prev, tomos: newTomos }))
   }
 
   const handleSave = async () => {
-    if (!documentData.archivo) {
-      setSaveError("Por favor selecciona un archivo PDF");
-      return;
+    // Validar que todos los tomos tengan archivo
+    const hasMissingFile = documentData.tomos.some(tomo => !tomo.archivo)
+    if (hasMissingFile) {
+      setSaveError("Por favor selecciona un archivo PDF para cada tomo")
+      return
     }
 
-    setIsSaving(true);
-    setSaveError("");
+    setIsSaving(true)
+    setSaveError("")
 
     try {
-      const formData = new FormData();
-      formData.append('tipo_documento', documentData.type);
-      formData.append('denominacion', documentData.denomination);
-      formData.append('denominacion_numerica', documentData.consecutivo);
-      formData.append('titulo', documentData.titulo);
-      formData.append('autor', documentData.autor);
-      formData.append('editorial', documentData.editorial || "");
-      formData.append('tomo', documentData.tomo ? String(Number(documentData.tomo)) : "0");
-      formData.append('año', documentData.año);
-      formData.append('pais', documentData.pais);
-      formData.append('archivo', documentData.archivo);
+      const formData = new FormData()
+      formData.append('tipo_documento', documentData.type)
+      formData.append('denominacion', documentData.denomination)
+      formData.append('denominacion_numerica', documentData.consecutivo)
+      formData.append('titulo', documentData.titulo)
+      formData.append('autor', documentData.autor)
+      formData.append('editorial', documentData.editorial || "")
+      formData.append('año', documentData.año)
+      formData.append('pais', documentData.pais)
+      
+      // Agregar cada tomo al formData
+      documentData.tomos.forEach((tomo, index) => {
+        formData.append(`tomos[${index}][numero]`, tomo.numero === "" ? "0" : String(tomo.numero))
+        if (tomo.archivo) {
+          formData.append(`tomos[${index}][archivo]`, tomo.archivo)
+        }
+      })
 
       const token = localStorage.getItem("token")
       const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/bibliotecas`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      });
+      })
 
       if (response.status === 201) {
-        alert("Documento guardado exitosamente!");
-        router.push('/dashboard/consultas');
+        alert("Documento guardado exitosamente!")
+        router.push('/dashboard/consultas')
       } else {
-        setSaveError("Error inesperado al guardar el documento");
+        setSaveError("Error inesperado al guardar el documento")
       }
     } catch (error: any) {
-      console.error("Error al guardar:", error);
+      console.error("Error al guardar:", error)
 
       if (error.response) {
         if (error.response.data.errors) {
-          const errors = error.response.data.errors;
-          const firstError = Object.values(errors)[0] as string[];
-          setSaveError(firstError[0] || "Error de validación");
+          const errors = error.response.data.errors
+          const firstError = Object.values(errors)[0] as string[]
+          setSaveError(firstError[0] || "Error de validación")
         } else {
-          setSaveError(error.response.data.message || "Error del servidor");
+          setSaveError(error.response.data.message || "Error del servidor")
         }
       } else {
-        setSaveError("Error de conexión con el servidor");
+        setSaveError("Error de conexión con el servidor")
       }
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
   }
 
   const canProceedToStep2 = documentData.type && documentData.denomination && documentData.consecutivo
   const canProceedToStep3 = documentData.titulo && documentData.autor && documentData.año && documentData.pais
-  const canSave = documentData.archivo
+  const canSave = documentData.tomos.every(tomo => tomo.archivo !== null)
 
   return (
     <div className="max-w-full space-y-6">
       <Card>
-        {/* Mensaje de error general */}
         {saveError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mx-6 mt-4">
             <strong className="font-bold">Error: </strong>
@@ -137,7 +175,6 @@ export default function BibliotecaPage() {
           </div>
         )}
 
-        {/* Step 1: Document Type and Denomination */}
         {step === 1 && (
           <CardContent className="space-y-6">
             <CardHeader className="px-0">
@@ -147,7 +184,6 @@ export default function BibliotecaPage() {
               </CardDescription>
             </CardHeader>
             
-            {/* Progress indicator - Ahora dentro de cada paso */}
             <div className="flex items-center justify-center space-x-4 mb-6">
               {[1, 2, 3].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
@@ -171,7 +207,6 @@ export default function BibliotecaPage() {
               ))}
             </div>
 
-            {/* Campos del formulario */}
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="document-type">Tipo de Documento</Label>
@@ -271,7 +306,6 @@ export default function BibliotecaPage() {
           </CardContent>
         )}
 
-        {/* Step 2: Document Information */}
         {step === 2 && (
           <CardContent className="space-y-6">
             <CardHeader className="px-0">
@@ -281,7 +315,6 @@ export default function BibliotecaPage() {
               </CardDescription>
             </CardHeader>
             
-            {/* Progress indicator */}
             <div className="flex items-center justify-center space-x-4 mb-6">
               {[1, 2, 3].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
@@ -305,7 +338,6 @@ export default function BibliotecaPage() {
               ))}
             </div>
 
-            {/* Campos del formulario */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="titulo">Título *</Label>
@@ -353,23 +385,6 @@ export default function BibliotecaPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tomo">Tomo</Label>
-                <Input
-                  id="tomo"
-                  type="number"
-                  value={documentData.tomo === 0 ? "" : documentData.tomo}
-                  onChange={(e) =>
-                    setDocumentData((prev) => ({
-                      ...prev,
-                      tomo: e.target.value === "" ? 0 : Number(e.target.value),
-                    }))
-                  }
-                  placeholder="Número de tomo"
-                  min={0}
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="año">Año *</Label>
                 <Input
                   id="año"
@@ -405,6 +420,49 @@ export default function BibliotecaPage() {
                 </Select>
               </div>
 
+              {/* Sección de múltiples tomos */}
+              <div className="col-span-full space-y-4">
+                <div className="flex justify-between items-center">
+                  <Label>Tomos</Label>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={handleAddTomo}
+                    className="flex items-center gap-1"
+                  >
+                    <Plus className="h-4 w-4" /> Agregar tomo
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {documentData.tomos.map((tomo, index) => (
+                    <div key={index} className="border rounded-lg p-4 flex flex-col gap-3 relative">
+                      {documentData.tomos.length > 1 && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                          onClick={() => handleRemoveTomo(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`tomo-${index}`}>Número de Tomo</Label>
+                        <Input
+                          id={`tomo-${index}`}
+                          type="number"
+                          value={tomo.numero}
+                          onChange={(e) => handleTomoNumberChange(index, e.target.value)}
+                          placeholder="Número de tomo"
+                          min={0}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-between">
@@ -426,17 +484,15 @@ export default function BibliotecaPage() {
           </CardContent>
         )}
 
-        {/* Step 3: File Upload */}
         {step === 3 && (
           <CardContent className="space-y-6">
             <CardHeader className="px-0">
               <CardTitle>Paso 3: Carga de Documento</CardTitle>
               <CardDescription>
-                Sube el archivo PDF digitalizado del documento
+                Sube los archivos PDF digitalizados para cada tomo
               </CardDescription>
             </CardHeader>
             
-            {/* Progress indicator */}
             <div className="flex items-center justify-center space-x-4 mb-6">
               {[1, 2, 3].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
@@ -460,9 +516,7 @@ export default function BibliotecaPage() {
               ))}
             </div>
 
-            {/* Campos del formulario */}
             <div className="space-y-6">
-              {/* Document Summary */}
               <div className="p-4 bg-muted rounded-lg space-y-2">
                 <h3 className="font-medium">Resumen del Documento:</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -484,38 +538,64 @@ export default function BibliotecaPage() {
                   <div>
                     <strong>País:</strong> {documentData.pais}
                   </div>
+                  <div>
+                    <strong>Tomos:</strong> {documentData.tomos.map(t => t.numero || 'N/A').join(', ')}
+                  </div>
                 </div>
               </div>
 
-              {/* File Upload */}
-              <div className="space-y-2">
-                <Label htmlFor="archivo">Archivo PDF *</Label>
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Arrastra y suelta tu archivo PDF aquí, o
-                    </p>
-                    <Input
-                      id="archivo"
-                      type="file"
-                      accept=".pdf"
-                      onChange={handleFileChange}
-                      className="max-w-xs mx-auto"
-                    />
-                  </div>
-                  {documentData.archivo && (
-                    <div className="mt-4 p-2 bg-green-50 rounded border border-green-200">
-                      <p className="text-sm text-green-700">
-                        ✓ Archivo seleccionado: {documentData.archivo.name}
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        Tamaño: {(documentData.archivo.size / 1024 / 1024).toFixed(2)}{" "}
-                        MB
+              {/* Carga de archivos por tomo */}
+              <div className="space-y-8">
+                {documentData.tomos.map((tomo, index) => (
+                  <div key={index} className="border rounded-lg p-6">
+                    <div className="mb-4">
+                      <h3 className="font-medium text-lg">
+                        Tomo: {tomo.numero || `#${index + 1}`}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Sube el archivo PDF correspondiente a este tomo
                       </p>
                     </div>
-                  )}
-                </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`archivo-${index}`}>Archivo PDF *</Label>
+                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                        <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            Arrastra y suelta tu archivo PDF aquí, o
+                          </p>
+                          <Input
+                            id={`archivo-${index}`}
+                            type="file"
+                            accept=".pdf"
+                            onChange={(e) => handleTomoFileChange(
+                              index, 
+                              e.target.files?.[0] || null
+                            )}
+                            className="max-w-xs mx-auto"
+                          />
+                        </div>
+                        {tomo.archivo && (
+                          <div className="mt-4 p-2 bg-green-50 rounded border border-green-200">
+                            <p className="text-sm text-green-700">
+                              ✓ Archivo seleccionado: {tomo.archivo.name}
+                            </p>
+                            <p className="text-xs text-green-600 mt-1">
+                              Tamaño: {(tomo.archivo.size / 1024 / 1024).toFixed(2)}{" "}
+                              MB
+                            </p>
+                          </div>
+                        )}
+                        {!tomo.archivo && (
+                          <p className="text-red-500 text-sm mt-4">
+                            Por favor selecciona un archivo PDF para este tomo
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex justify-between">

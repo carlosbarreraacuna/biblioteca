@@ -17,8 +17,15 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Eye, Edit, Download, BookOpen, FileText } from "lucide-react"
+import { Search, Eye, Edit, Download, BookOpen, FileText, Trash2, Plus, Upload } from "lucide-react"
 import axios from "axios"
+
+// Definir interfaz para los tomos
+interface Tomo {
+  id: string;
+  numero: number;
+  archivo: string;
+}
 
 interface Document {
   id: string
@@ -33,6 +40,7 @@ interface Document {
   pais: string
   created_at: string
   archivo: string
+  tomos: Tomo[]; // Nuevo campo para los tomos
 }
 
 const denominationLabels = {
@@ -61,11 +69,17 @@ export default function ConsultasPage() {
     const fetchDocuments = async () => {
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/bibliotecas`)
-        // Asegúrate de que la respuesta sea un array
+        // Asegurar que los documentos tengan tomos (incluso si es un array vacío)
         const docs = Array.isArray(response.data)
-          ? response.data
-          : Array.isArray(response.data.data)
-            ? response.data.data
+          ? response.data.map((doc: any) => ({
+            ...doc,
+            tomos: doc.tomos || []
+          }))
+          : Array.isArray(response.data?.data)
+            ? response.data.data.map((doc: any) => ({
+              ...doc,
+              tomos: doc.tomos || []
+            }))
             : []
         setDocuments(docs)
       } catch (error) {
@@ -123,43 +137,59 @@ export default function ConsultasPage() {
     }
   }
 
-  const handleDescargarPDF = async (id: any) => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/bibliotecas/${id}/descargar`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
+  const handleDescargarPDF = async (fileName: string) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/bibliotecas/descargar`,
+      {
+        headers: { 
+          Authorization: `Bearer ${token}` 
+        },
+        responseType: "blob",
+        params: { 
+          file: fileName 
         }
-      );
-
-      // Obtener el nombre del archivo desde content-disposition
-      const disposition = response.headers['content-disposition'];
-      let filename = 'documento.pdf';
-      
-      if (disposition && disposition.includes('filename=')) {
-        filename = decodeURIComponent(disposition.split('filename*=UTF-8\'')[1] || disposition.split('filename=')[1]);
       }
+    );
 
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      const url = window.URL.createObjectURL(blob);
+    // Determinar el tipo MIME correcto (PDF u otro)
+    const mimeType = response.headers['content-type'] || 'application/pdf';
+    
+    // Crear el blob con el tipo correcto
+    const blob = new Blob([response.data], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      alert("Error al descargar el archivo");
-      console.error("Descarga fallida:", error);
+    // Crear enlace y simular clic para descarga
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName);
+    link.style.display = "none";
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    // Limpieza
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    console.error("Error al descargar el archivo:", error);
+    
+    // Mostrar alerta más específica
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        alert("Archivo no encontrado en el servidor");
+      } else if (error.response?.status === 401) {
+        alert("No autorizado - por favor inicie sesión nuevamente");
+      } else {
+        alert(`Error del servidor: ${error.response?.status}`);
+      }
+    } else {
+      alert("Error desconocido al descargar el archivo");
     }
-  };
-
-
+  }
+};
 
   const getTypeBadge = (tipo_documento: string) => {
     const variants = {
@@ -174,7 +204,7 @@ export default function ConsultasPage() {
       azs: "AZS",
     }
 
-    // Convertir el tipo de documento a minúsculas para asegurar que coincida con las claves
+    // Convertir el tipo de documento a minúsculas
     const tipoDocumentoNormalizado = tipo_documento.toLowerCase()
 
     return (
@@ -199,6 +229,50 @@ export default function ConsultasPage() {
       </Badge>
     )
   }
+
+  // Funciones para manejar tomos en edición
+const handleAddTomoEdit = () => {
+  setEditingDocument(prev => {
+    if (!prev) return prev;
+    return {
+      ...prev,
+      tomos: [...prev.tomos, { id: Date.now().toString(), numero: 0, archivo: "" }]
+    };
+  });
+};
+
+const handleRemoveTomoEdit = (index: number) => {
+  setEditingDocument(prev => {
+    if (!prev || prev.tomos.length <= 1) return prev;
+    const newTomos = [...prev.tomos];
+    newTomos.splice(index, 1);
+    return { ...prev, tomos: newTomos };
+  });
+};
+
+const handleTomoNumberChangeEdit = (index: number, value: string) => {
+  setEditingDocument(prev => {
+    if (!prev) return prev;
+    const newTomos = [...prev.tomos];
+    newTomos[index] = {
+      ...newTomos[index],
+      numero: parseInt(value) || 0
+    };
+    return { ...prev, tomos: newTomos };
+  });
+};
+
+const handleTomoFileChangeEdit = (index: number, file: File | null) => {
+  setEditingDocument(prev => {
+    if (!prev) return prev;
+    const newTomos = [...prev.tomos];
+    newTomos[index] = {
+      ...newTomos[index],
+      archivo: file ? file.name : newTomos[index].archivo
+    };
+    return { ...prev, tomos: newTomos };
+  });
+};
 
   return (
     <div className="space-y-6">
@@ -299,7 +373,7 @@ export default function ConsultasPage() {
             </Select>
           </div>
 
-          {/* Controles de paginación - AHORA ARRIBA DE LA TABLA */}
+          {/* Controles de paginación */}
           {filteredDocuments.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
               <div className="flex items-center space-x-2">
@@ -370,6 +444,7 @@ export default function ConsultasPage() {
                   <TableHead>Autor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Denominación</TableHead>
+                  <TableHead>Tomos</TableHead> {/* Nueva columna para tomos */}
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -381,6 +456,11 @@ export default function ConsultasPage() {
                     <TableCell>{document.autor}</TableCell>
                     <TableCell>{getTypeBadge(document.tipo_documento)}</TableCell>
                     <TableCell>{getDenominationBadge(document.denominacion)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {(document.tomos ? document.tomos.length : 0)} tomo{(document.tomos ? document.tomos.length : 0) !== 1 ? 's' : ''}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -473,20 +553,39 @@ export default function ConsultasPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="font-medium">Fecha de Registro</Label>
+                <p className="text-sm bg-muted p-2 rounded">
+                  {new Date(selectedDocument.created_at).toLocaleDateString("es-ES", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+
+              {/* Sección de Tomos */}
+              <div className="space-y-2">
+                <Label className="font-medium">Tomos</Label>
                 <div className="space-y-2">
-                  <Label className="font-medium">Fecha de Registro</Label>
-                  <p className="text-sm bg-muted p-2 rounded">
-                    {new Date(selectedDocument.created_at).toLocaleDateString("es-ES", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-medium">Archivo</Label>
-                  <p className="text-sm bg-muted p-2 rounded">{selectedDocument.archivo}</p>
+                  {selectedDocument.tomos && selectedDocument.tomos.length > 0 ? (
+                    selectedDocument.tomos.map((tomo) => (
+                      <div key={tomo.id} className="flex items-center justify-between bg-muted p-2 rounded">
+                        <div>
+                          <span className="font-medium">Tomo {tomo.numero}:</span> {tomo.archivo}
+                        </div>
+                        <Button
+  variant="outline"
+  size="sm"
+  onClick={() => handleDescargarPDF(tomo.archivo)} // Solo nombre de archivo
+>
+  <Download className="h-4 w-4" />
+</Button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay tomos registrados</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -495,116 +594,166 @@ export default function ConsultasPage() {
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Cerrar
             </Button>
-            <Button onClick={() => selectedDocument && handleDescargarPDF(selectedDocument.id)}>
-              <Download className="mr-2 h-4 w-4" />
-              Descargar PDF
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Modal de edición */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Documento</DialogTitle>
-            <DialogDescription>Modifica la información del documento</DialogDescription>
-          </DialogHeader>
-          {editingDocument && (
-            <div className="grid gap-4 py-4 max-h-96 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-codigo">Código</Label>
-                  <Input
-                    id="edit-codigo"
-                    value={editingDocument.denominacion_numerica}
-                    onChange={(e) => setEditingDocument({ ...editingDocument, denominacion_numerica: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tipo">Tipo</Label>
-                  <Select
-                    value={editingDocument.tipo_documento.toLowerCase()}
-                    onValueChange={(value: "LIBROS" | "LIBROS_ANILLADOS" | "AZS") =>
-                      setEditingDocument({ ...editingDocument, tipo_documento: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="libros">Libros</SelectItem>
-                      <SelectItem value="libros_anillados">Libros Anillados</SelectItem>
-                      <SelectItem value="azs">AZS</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+      {/* Modal de edición */}
+<Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Editar Documento</DialogTitle>
+      <DialogDescription>Modifica la información del documento y sus tomos</DialogDescription>
+    </DialogHeader>
+    {editingDocument && (
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-codigo">Código</Label>
+            <Input
+              id="edit-codigo"
+              value={editingDocument.denominacion_numerica}
+              onChange={(e) => setEditingDocument({ ...editingDocument, denominacion_numerica: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-tipo">Tipo</Label>
+            <Select
+              value={editingDocument.tipo_documento.toLowerCase()}
+              onValueChange={(value: "libros" | "libros_anillados" | "azs") =>
+                setEditingDocument({ ...editingDocument, tipo_documento: value.toUpperCase() as "LIBROS" | "LIBROS_ANILLADOS" | "AZS" })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="libros">Libros</SelectItem>
+                <SelectItem value="libros_anillados">Libros Anillados</SelectItem>
+                <SelectItem value="azs">AZS</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-titulo">Título</Label>
-                <Input
-                  id="edit-titulo"
-                  value={editingDocument.titulo}
-                  onChange={(e) => setEditingDocument({ ...editingDocument, titulo: e.target.value })}
-                />
-              </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-titulo">Título</Label>
+          <Input
+            id="edit-titulo"
+            value={editingDocument.titulo}
+            onChange={(e) => setEditingDocument({ ...editingDocument, titulo: e.target.value })}
+          />
+        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-autor">Autor</Label>
-                  <Input
-                    id="edit-autor"
-                    value={editingDocument.autor}
-                    onChange={(e) => setEditingDocument({ ...editingDocument, autor: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-editorial">Editorial</Label>
-                  <Input
-                    id="edit-editorial"
-                    value={editingDocument.editorial}
-                    onChange={(e) => setEditingDocument({ ...editingDocument, editorial: e.target.value })}
-                  />
-                </div>
-              </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-autor">Autor</Label>
+            <Input
+              id="edit-autor"
+              value={editingDocument.autor}
+              onChange={(e) => setEditingDocument({ ...editingDocument, autor: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-editorial">Editorial</Label>
+            <Input
+              id="edit-editorial"
+              value={editingDocument.editorial}
+              onChange={(e) => setEditingDocument({ ...editingDocument, editorial: e.target.value })}
+            />
+          </div>
+        </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tomo">Tomo</Label>
-                  <Input
-                    id="edit-tomo"
-                    value={editingDocument.tomo}
-                    onChange={(e) => setEditingDocument({ ...editingDocument, tomo: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-año">Año</Label>
-                  <Input
-                    id="edit-año"
-                    value={editingDocument.año}
-                    onChange={(e) => setEditingDocument({ ...editingDocument, año: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-pais">País</Label>
-                  <Input
-                    id="edit-pais"
-                    value={editingDocument.pais}
-                    onChange={(e) => setEditingDocument({ ...editingDocument, pais: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancelar
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-año">Año</Label>
+            <Input
+              id="edit-año"
+              value={editingDocument.año}
+              onChange={(e) => setEditingDocument({ ...editingDocument, año: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-pais">País</Label>
+            <Input
+              id="edit-pais"
+              value={editingDocument.pais}
+              onChange={(e) => setEditingDocument({ ...editingDocument, pais: e.target.value })}
+            />
+          </div>
+        </div>
+
+        {/* Sección de Tomos para edición */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Label>Tomos</Label>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => handleAddTomoEdit()}
+              className="flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" /> Agregar tomo
             </Button>
-            <Button onClick={handleSaveEdit}>Guardar Cambios</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+          
+          <div className="space-y-4">
+            {editingDocument.tomos.map((tomo, index) => (
+              <div key={index} className="border rounded-lg p-4 flex flex-col gap-3 relative">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                  onClick={() => handleRemoveTomoEdit(index)}
+                  disabled={editingDocument.tomos.length <= 1}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                
+                <div className="space-y-2">
+                  <Label htmlFor={`edit-tomo-numero-${index}`}>Número de Tomo</Label>
+                  <Input
+                    id={`edit-tomo-numero-${index}`}
+                    type="number"
+                    value={tomo.numero}
+                    onChange={(e) => handleTomoNumberChangeEdit(index, e.target.value)}
+                    placeholder="Número de tomo"
+                    min={1}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Archivo PDF</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
+                    <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        {tomo.archivo ? `Archivo actual: ${tomo.archivo}` : "Ningún archivo seleccionado"}
+                      </p>
+                      <Input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => handleTomoFileChangeEdit(index, e.target.files?.[0] || null)}
+                        className="max-w-xs mx-auto"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+        Cancelar
+      </Button>
+      <Button onClick={handleSaveEdit}>Guardar Cambios</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </div>
   )
 }
