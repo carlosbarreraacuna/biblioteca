@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, ArrowLeft, ArrowRight, Save, Loader2, Plus, Trash2 } from "lucide-react";
+import { Upload, ArrowLeft, ArrowRight, Save, Loader2, Plus, Trash2, FileWarning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import paises from "@/app/paisesJson/paises.json"
 
@@ -16,8 +16,9 @@ type DocumentType = "libros" | "libros_anillados" | "azs" | ""
 type Denomination = "MI" | "CG" | "J" | "R" | "H" | ""
 
 interface Tomo {
-  numero: number | ""
+  numero: number
   archivo: File | null
+  error?: string
 }
 
 interface DocumentData {
@@ -55,7 +56,7 @@ export default function BibliotecaPage() {
     editorial: "",
     año: "",
     pais: "",
-    tomos: [{ numero: "", archivo: null }], // Inicializar con un tomo vacío
+    tomos: [{ numero: 1, archivo: null }],
   })
 
   const handleDenominationChange = (value: Denomination) => {
@@ -67,107 +68,158 @@ export default function BibliotecaPage() {
   }
 
   const handleAddTomo = () => {
+    const nextNumero = documentData.tomos.length + 1;
+    
     setDocumentData(prev => ({
       ...prev,
-      tomos: [...prev.tomos, { numero: "", archivo: null }]
+      tomos: [...prev.tomos, { 
+        numero: nextNumero, 
+        archivo: null 
+      }]
     }))
   }
 
   const handleRemoveTomo = (index: number) => {
     if (documentData.tomos.length <= 1) return
-    setDocumentData(prev => ({
-      ...prev,
-      tomos: prev.tomos.filter((_, i) => i !== index)
-    }))
-  }
-
-  const handleTomoNumberChange = (index: number, value: string) => {
-    const newTomos = [...documentData.tomos]
-    newTomos[index] = {
-      ...newTomos[index],
-      numero: value === "" ? "" : Number(value)
-    }
-    setDocumentData(prev => ({ ...prev, tomos: newTomos }))
+    
+    setDocumentData(prev => {
+      const newTomos = prev.tomos.filter((_, i) => i !== index);
+      
+      // Reasignar números consecutivos
+      const tomosRenumerados = newTomos.map((tomo, idx) => ({
+        ...tomo,
+        numero: idx + 1
+      }));
+      
+      return { ...prev, tomos: tomosRenumerados };
+    })
   }
 
   const handleTomoFileChange = (index: number, file: File | null) => {
-    const newTomos = [...documentData.tomos]
-    newTomos[index] = {
-      ...newTomos[index],
-      archivo: file
+    // Limpiar errores previos
+    setSaveError("");
+    
+    if (file) {
+      // Validación doble: tipo MIME y extensión
+      const isPDF = file.type === "application/pdf";
+      const isPDFExtension = file.name.toLowerCase().endsWith(".pdf");
+      
+      if (!isPDF || !isPDFExtension) {
+        // Actualizar estado con error específico para este tomo
+        setDocumentData(prev => {
+          const newTomos = [...prev.tomos];
+          newTomos[index] = { 
+            ...newTomos[index], 
+            archivo: null,
+            error: "El archivo debe ser un PDF válido (tipo MIME: application/pdf)"
+          };
+          return { ...prev, tomos: newTomos };
+        });
+        
+        setSaveError("Por favor selecciona un archivo PDF válido");
+        return;
+      }
     }
-    setDocumentData(prev => ({ ...prev, tomos: newTomos }))
+    
+    // Actualizar estado con nuevo archivo
+    setDocumentData(prev => {
+      const newTomos = [...prev.tomos];
+      newTomos[index] = { 
+        ...newTomos[index], 
+        archivo: file,
+        error: undefined // Limpiar error si existía
+      };
+      return { ...prev, tomos: newTomos };
+    });
   }
 
   const handleSave = async () => {
-    // Validar que todos los tomos tengan archivo
-    const hasMissingFile = documentData.tomos.some(tomo => !tomo.archivo)
-    if (hasMissingFile) {
-      setSaveError("Por favor selecciona un archivo PDF para cada tomo")
-      return
+    // Verificar archivos faltantes o inválidos
+    const hasInvalidFiles = documentData.tomos.some(tomo => {
+      return !tomo.archivo || tomo.error;
+    });
+    
+    if (hasInvalidFiles) {
+      setSaveError("Por favor selecciona un archivo PDF válido para cada tomo");
+      return;
     }
 
-    setIsSaving(true)
-    setSaveError("")
+    setIsSaving(true);
+    setSaveError("");
 
     try {
-      const formData = new FormData()
-      formData.append('tipo_documento', documentData.type)
-      formData.append('denominacion', documentData.denomination)
-      formData.append('denominacion_numerica', documentData.consecutivo)
-      formData.append('titulo', documentData.titulo)
-      formData.append('autor', documentData.autor)
-      formData.append('editorial', documentData.editorial || "")
-      formData.append('año', documentData.año)
-      formData.append('pais', documentData.pais)
+      const formData = new FormData();
+      formData.append('tipo_documento', documentData.type);
+      formData.append('denominacion', documentData.denomination);
+      formData.append('denominacion_numerica', documentData.consecutivo);
+      formData.append('titulo', documentData.titulo);
+      formData.append('autor', documentData.autor);
+      formData.append('editorial', documentData.editorial || "");
+      formData.append('año', documentData.año);
+      formData.append('pais', documentData.pais);
       
-      // Agregar cada tomo al formData
       documentData.tomos.forEach((tomo, index) => {
-        formData.append(`tomos[${index}][numero]`, tomo.numero === "" ? "0" : String(tomo.numero))
+        formData.append(`tomos[${index}][numero]`, String(tomo.numero));
         if (tomo.archivo) {
-          formData.append(`tomos[${index}][archivo]`, tomo.archivo)
+          formData.append(`tomos[${index}][archivo]`, tomo.archivo);
         }
-      })
+      });
 
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("token");
       const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/bibliotecas`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
-      })
+      });
 
       if (response.status === 201) {
-        alert("Documento guardado exitosamente!")
-        router.push('/dashboard/consultas')
+        alert("Documento guardado exitosamente!");
+        router.push('/dashboard/consultas');
       } else {
-        setSaveError("Error inesperado al guardar el documento")
+        setSaveError("Error inesperado al guardar el documento");
       }
     } catch (error: any) {
-      console.error("Error al guardar:", error)
+      console.error("Error al guardar:", error);
 
       if (error.response) {
-        if (error.response.data.errors) {
-          const errors = error.response.data.errors
-          const firstError = Object.values(errors)[0] as string[]
-          setSaveError(firstError[0] || "Error de validación")
+        const serverError = error.response.data;
+        
+        // Manejo específico de errores de archivos
+        if (serverError.message?.toLowerCase().includes("pdf") || 
+            serverError.errors?.some((e: any) => 
+              e.path?.toLowerCase().includes("archivo") || 
+              e.message?.toLowerCase().includes("pdf"))) {
+          
+          // Mensaje detallado del servidor
+          const serverMessage = serverError.message || 
+            serverError.errors?.map((e: any) => e.message).join(", ") || 
+            "El archivo debe ser un PDF válido";
+          
+          setSaveError(`Error en archivos: ${serverMessage}`);
+        } 
+        else if (serverError.errors) {
+          // Manejar otros errores de validación
+          const errors = serverError.errors;
+          const firstError = Object.values(errors)[0] as string[];
+          setSaveError(firstError[0] || "Error de validación");
         } else {
-          setSaveError(error.response.data.message || "Error del servidor")
+          setSaveError(serverError.message || "Error del servidor");
         }
       } else {
-        setSaveError("Error de conexión con el servidor")
+        setSaveError("Error de conexión con el servidor");
       }
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
   }
 
-  const canProceedToStep2 = documentData.type && documentData.denomination && documentData.consecutivo
-  const canProceedToStep3 = documentData.titulo && documentData.autor && documentData.año && documentData.pais
-  const canSave = documentData.tomos.every(tomo => tomo.archivo !== null)
+  const canProceedToStep2 = documentData.type && documentData.denomination && documentData.consecutivo;
+  const canProceedToStep3 = documentData.titulo && documentData.autor && documentData.año && documentData.pais;
+  const canSave = documentData.tomos.every(tomo => tomo.archivo !== null && !tomo.error);
 
-  //funcuion to generate years from 1900 to current year
   const currentYear = new Date().getFullYear();
-const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
+  const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
 
   return (
     <div className="max-w-full space-y-6">
@@ -224,9 +276,7 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
                     <SelectValue placeholder="Selecciona el tipo de documento" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="LIBROS">LIBROS</SelectItem>
-                    <SelectItem value="LIBROS_ANILLADOS">LIBROS ANILLADOS</SelectItem>
-                    <SelectItem value="AZS">AZS</SelectItem>
+                    <SelectItem value="libros">LIBROS</SelectItem><SelectItem value="libros_anillados">LIBROS ANILLADOS</SelectItem><SelectItem value="azs">AZS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -242,11 +292,7 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
                     <SelectValue placeholder="Selecciona la denominación" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MI">MI - Memoria Institucional</SelectItem>
-                    <SelectItem value="CG">CG - Colección General</SelectItem>
-                    <SelectItem value="J">J - Jurídico</SelectItem>
-                    <SelectItem value="R">R - Revistas</SelectItem>
-                    <SelectItem value="H">H - Hemeroteca</SelectItem>
+                    <SelectItem value="MI">MI - Memoria Institucional</SelectItem><SelectItem value="CG">CG - Colección General</SelectItem><SelectItem value="J">J - Jurídico</SelectItem><SelectItem value="R">R - Revistas</SelectItem><SelectItem value="H">H - Hemeroteca</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -389,23 +435,23 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
               </div>
 
               <div className="space-y-2">
-  <Label htmlFor="año">Año *</Label>
-  <Select
-    value={documentData.año}
-    onValueChange={(value) => setDocumentData(prev => ({ ...prev, año: value }))}
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Selecciona un año" />
-    </SelectTrigger>
-    <SelectContent className="max-h-60 overflow-y-auto">
-      {years.map(year => (
-        <SelectItem key={year} value={String(year)}>
-          {year}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+                <Label htmlFor="año">Año *</Label>
+                <Select
+                  value={documentData.año}
+                  onValueChange={(value) => setDocumentData(prev => ({ ...prev, año: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un año" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {years.map(year => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="pais">País *</Label>
@@ -426,7 +472,6 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
                 </Select>
               </div>
 
-              {/* Sección de múltiples tomos */}
               <div className="col-span-full space-y-4">
                 <div className="flex justify-between items-center">
                   <Label>Tomos</Label>
@@ -455,15 +500,10 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
                       )}
                       
                       <div className="space-y-2">
-                        <Label htmlFor={`tomo-${index}`}>Número de Tomo</Label>
-                        <Input
-                          id={`tomo-${index}`}
-                          type="number"
-                          value={tomo.numero}
-                          onChange={(e) => handleTomoNumberChange(index, e.target.value)}
-                          placeholder="Número de tomo"
-                          min={0}
-                        />
+                        <Label>Número de Tomo</Label>
+                        <div className="flex items-center bg-muted px-3 py-2 rounded-md border">
+                          <span className="font-medium">{tomo.numero}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -545,18 +585,17 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
                     <strong>País:</strong> {documentData.pais}
                   </div>
                   <div>
-                    <strong>Tomos:</strong> {documentData.tomos.map(t => t.numero || 'N/A').join(', ')}
+                    <strong>Tomos:</strong> {documentData.tomos.map(t => t.numero).join(', ')}
                   </div>
                 </div>
               </div>
 
-              {/* Carga de archivos por tomo */}
               <div className="space-y-8">
                 {documentData.tomos.map((tomo, index) => (
                   <div key={index} className="border rounded-lg p-6">
                     <div className="mb-4">
                       <h3 className="font-medium text-lg">
-                        Tomo: {tomo.numero || `#${index + 1}`}
+                        Tomo: {tomo.numero}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         Sube el archivo PDF correspondiente a este tomo
@@ -593,8 +632,15 @@ const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear -
                             </p>
                           </div>
                         )}
-                        {!tomo.archivo && (
+                        {tomo.error && (
                           <p className="text-red-500 text-sm mt-4">
+                            <FileWarning className="inline mr-1 h-4 w-4" />
+                            {tomo.error}
+                          </p>
+                        )}
+                        {!tomo.archivo && !tomo.error && (
+                          <p className="text-red-500 text-sm mt-4">
+                            <FileWarning className="inline mr-1 h-4 w-4" />
                             Por favor selecciona un archivo PDF para este tomo
                           </p>
                         )}
