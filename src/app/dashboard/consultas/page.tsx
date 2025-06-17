@@ -20,11 +20,12 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Eye, Edit, Download, BookOpen, FileText, Trash2, Plus, Upload } from "lucide-react"
 import axios from "axios"
 
-// Definir interfaz para los tomos
+// Definir interfaz para los tomos - Acepta string o number
 interface Tomo {
-  id: string;
+  id: string | number;
   numero: number;
   archivo: string;
+  newFile?: File | null;
 }
 
 interface Document {
@@ -35,12 +36,10 @@ interface Document {
   titulo: string
   autor: string
   editorial: string
-  tomo: string
   año: string
   pais: string
   created_at: string
-  archivo: string
-  tomos: Tomo[]; // Nuevo campo para los tomos
+  tomos: Tomo[];
 }
 
 const denominationLabels = {
@@ -60,6 +59,7 @@ export default function ConsultasPage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
+  const [tomosEliminados, setTomosEliminados] = useState<string[]>([])
 
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -69,7 +69,6 @@ export default function ConsultasPage() {
     const fetchDocuments = async () => {
       try {
         const response = await api.get(`${process.env.NEXT_PUBLIC_API_URL}/bibliotecas`)
-        // Asegurar que los documentos tengan tomos (incluso si es un array vacío)
         const docs = Array.isArray(response.data)
           ? response.data.map((doc: any) => ({
             ...doc,
@@ -125,71 +124,130 @@ export default function ConsultasPage() {
   }
 
   const handleEditDocument = (document: Document) => {
-    setEditingDocument({ ...document })
+    setEditingDocument({ 
+      ...document,
+      tomos: document.tomos.map(tomo => ({ ...tomo }))
+    })
+    setTomosEliminados([])
     setIsEditDialogOpen(true)
   }
 
-  const handleSaveEdit = () => {
-    if (editingDocument) {
-      setDocuments(documents.map((doc) => (doc.id === editingDocument.id ? editingDocument : doc)))
-      setIsEditDialogOpen(false)
-      setEditingDocument(null)
+  const handleSaveEdit = async () => {
+    if (!editingDocument) return;
+
+    try {
+      const formData = new FormData();
+      
+      // Campos principales
+      formData.append('_method', 'PUT');
+      formData.append('tipo_documento', editingDocument.tipo_documento);
+      formData.append('denominacion', editingDocument.denominacion);
+      formData.append('denominacion_numerica', editingDocument.denominacion_numerica);
+      formData.append('titulo', editingDocument.titulo);
+      formData.append('autor', editingDocument.autor);
+      formData.append('editorial', editingDocument.editorial || '');
+      formData.append('año', editingDocument.año);
+      formData.append('pais', editingDocument.pais);
+      
+      // Tomos eliminados
+      if (tomosEliminados.length > 0) {
+        formData.append('tomos_eliminados', JSON.stringify(tomosEliminados));
+      }
+      
+      // Procesar tomos - CONVERSIÓN SEGURA A STRING
+      editingDocument.tomos.forEach((tomo, index) => {
+        formData.append(`tomos[${index}][numero]`, tomo.numero.toString());
+        
+        // Convertir ID a string antes de verificar
+        const tomoId = String(tomo.id);
+        
+        if (tomoId && !tomoId.startsWith('new-')) {
+          formData.append(`tomos[${index}][id]`, tomoId);
+        }
+        
+        if (tomo.newFile) {
+          formData.append(`tomos[${index}][archivo]`, tomo.newFile);
+        }
+      });
+      
+      // Enviar solicitud
+      const response = await api.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/bibliotecas/${editingDocument.id}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      
+      // Actualizar estado
+      setDocuments(documents.map(doc => 
+        doc.id === editingDocument.id ? response.data.data : doc
+      ));
+      setIsEditDialogOpen(false);
+      setEditingDocument(null);
+      setTomosEliminados([]);
+      
+    } catch (error) {
+      console.error("Error al actualizar el documento:", error);
+      
+      // Mostrar errores específicos
+      if (axios.isAxiosError(error) && error.response?.data?.errors) {
+        console.error("Errores de validación:", error.response.data.errors);
+        alert("Errores de validación: " + JSON.stringify(error.response.data.errors));
+      } else {
+        alert("Error al actualizar el documento. Por favor, intente nuevamente.");
+      }
     }
-  }
+  };
 
   const handleDescargarPDF = async (fileName: string) => {
-  try {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/bibliotecas/descargar`,
-      {
-        headers: { 
-          Authorization: `Bearer ${token}` 
-        },
-        responseType: "blob",
-        params: { 
-          file: fileName 
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/bibliotecas/descargar`,
+        {
+          headers: { 
+            Authorization: `Bearer ${token}` 
+          },
+          responseType: "blob",
+          params: { 
+            file: fileName 
+          }
         }
-      }
-    );
+      );
 
-    // Determinar el tipo MIME correcto (PDF u otro)
-    const mimeType = response.headers['content-type'] || 'application/pdf';
-    
-    // Crear el blob con el tipo correcto
-    const blob = new Blob([response.data], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
+      const mimeType = response.headers['content-type'] || 'application/pdf';
+      const blob = new Blob([response.data], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
 
-    // Crear enlace y simular clic para descarga
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", fileName);
-    link.style.display = "none";
-    
-    document.body.appendChild(link);
-    link.click();
-    
-    // Limpieza
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-  } catch (error) {
-    console.error("Error al descargar el archivo:", error);
-    
-    // Mostrar alerta más específica
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        alert("Archivo no encontrado en el servidor");
-      } else if (error.response?.status === 401) {
-        alert("No autorizado - por favor inicie sesión nuevamente");
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName);
+      link.style.display = "none";
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error("Error al descargar el archivo:", error);
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          alert("Archivo no encontrado en el servidor");
+        } else if (error.response?.status === 401) {
+          alert("No autorizado - por favor inicie sesión nuevamente");
+        } else {
+          alert(`Error del servidor: ${error.response?.status}`);
+        }
       } else {
-        alert(`Error del servidor: ${error.response?.status}`);
+        alert("Error desconocido al descargar el archivo");
       }
-    } else {
-      alert("Error desconocido al descargar el archivo");
     }
-  }
-};
+  };
 
   const getTypeBadge = (tipo_documento: string) => {
     const variants = {
@@ -204,7 +262,6 @@ export default function ConsultasPage() {
       azs: "AZS",
     }
 
-    // Convertir el tipo de documento a minúsculas
     const tipoDocumentoNormalizado = tipo_documento.toLowerCase()
 
     return (
@@ -231,48 +288,66 @@ export default function ConsultasPage() {
   }
 
   // Funciones para manejar tomos en edición
-const handleAddTomoEdit = () => {
-  setEditingDocument(prev => {
-    if (!prev) return prev;
-    return {
-      ...prev,
-      tomos: [...prev.tomos, { id: Date.now().toString(), numero: 0, archivo: "" }]
-    };
-  });
-};
+  const handleAddTomoEdit = () => {
+    setEditingDocument(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tomos: [
+          ...prev.tomos, 
+          { 
+            id: `new-${Date.now()}`,
+            numero: prev.tomos.length + 1, 
+            archivo: "",
+            newFile: null
+          }
+        ]
+      };
+    });
+  };
 
-const handleRemoveTomoEdit = (index: number) => {
-  setEditingDocument(prev => {
-    if (!prev || prev.tomos.length <= 1) return prev;
-    const newTomos = [...prev.tomos];
-    newTomos.splice(index, 1);
-    return { ...prev, tomos: newTomos };
-  });
-};
+  const handleRemoveTomoEdit = (index: number) => {
+    setEditingDocument(prev => {
+      if (!prev) return prev;
+      
+      const tomo = prev.tomos[index];
+      // Convertir ID a string antes de verificar
+      const tomoId = String(tomo.id);
+      
+      if (tomoId && !tomoId.startsWith('new-')) {
+        setTomosEliminados(prevIds => [...prevIds, tomoId]);
+      }
+      
+      const newTomos = [...prev.tomos];
+      newTomos.splice(index, 1);
+      return { ...prev, tomos: newTomos };
+    });
+  };
 
-const handleTomoNumberChangeEdit = (index: number, value: string) => {
-  setEditingDocument(prev => {
-    if (!prev) return prev;
-    const newTomos = [...prev.tomos];
-    newTomos[index] = {
-      ...newTomos[index],
-      numero: parseInt(value) || 0
-    };
-    return { ...prev, tomos: newTomos };
-  });
-};
+  const handleTomoNumberChangeEdit = (index: number, value: string) => {
+    setEditingDocument(prev => {
+      if (!prev) return prev;
+      const newTomos = [...prev.tomos];
+      newTomos[index] = {
+        ...newTomos[index],
+        numero: parseInt(value) || 0
+      };
+      return { ...prev, tomos: newTomos };
+    });
+  };
 
-const handleTomoFileChangeEdit = (index: number, file: File | null) => {
-  setEditingDocument(prev => {
-    if (!prev) return prev;
-    const newTomos = [...prev.tomos];
-    newTomos[index] = {
-      ...newTomos[index],
-      archivo: file ? file.name : newTomos[index].archivo
-    };
-    return { ...prev, tomos: newTomos };
-  });
-};
+  const handleTomoFileChangeEdit = (index: number, file: File | null) => {
+    setEditingDocument(prev => {
+      if (!prev) return prev;
+      const newTomos = [...prev.tomos];
+      newTomos[index] = {
+        ...newTomos[index],
+        newFile: file,
+        archivo: file ? file.name : newTomos[index].archivo
+      };
+      return { ...prev, tomos: newTomos };
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -352,8 +427,8 @@ const handleTomoFileChangeEdit = (index: number, file: File | null) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos los tipos</SelectItem>
-                <SelectItem value="libros">libros</SelectItem>
-                <SelectItem value="libros_anillados">libros Anillado</SelectItem>
+                <SelectItem value="libros">Libros</SelectItem>
+                <SelectItem value="libros_anillados">Libros Anillados</SelectItem>
                 <SelectItem value="azs">AZS</SelectItem>
               </SelectContent>
             </Select>
@@ -444,7 +519,7 @@ const handleTomoFileChangeEdit = (index: number, file: File | null) => {
                   <TableHead>Autor</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Denominación</TableHead>
-                  <TableHead>Tomos</TableHead> {/* Nueva columna para tomos */}
+                  <TableHead>Tomos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -540,10 +615,6 @@ const handleTomoFileChangeEdit = (index: number, file: File | null) => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="font-medium">Tomo</Label>
-                  <p className="text-sm bg-muted p-2 rounded">{selectedDocument.tomo || "N/A"}</p>
-                </div>
-                <div className="space-y-2">
                   <Label className="font-medium">Año</Label>
                   <p className="text-sm bg-muted p-2 rounded">{selectedDocument.año}</p>
                 </div>
@@ -575,12 +646,12 @@ const handleTomoFileChangeEdit = (index: number, file: File | null) => {
                           <span className="font-medium">Tomo {tomo.numero}:</span> {tomo.archivo}
                         </div>
                         <Button
-  variant="outline"
-  size="sm"
-  onClick={() => handleDescargarPDF(tomo.archivo)} // Solo nombre de archivo
->
-  <Download className="h-4 w-4" />
-</Button>
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDescargarPDF(tomo.archivo)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))
                   ) : (
@@ -599,161 +670,168 @@ const handleTomoFileChangeEdit = (index: number, file: File | null) => {
       </Dialog>
 
       {/* Modal de edición */}
-      {/* Modal de edición */}
-<Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-    <DialogHeader>
-      <DialogTitle>Editar Documento</DialogTitle>
-      <DialogDescription>Modifica la información del documento y sus tomos</DialogDescription>
-    </DialogHeader>
-    {editingDocument && (
-      <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-codigo">Código</Label>
-            <Input
-              id="edit-codigo"
-              value={editingDocument.denominacion_numerica}
-              onChange={(e) => setEditingDocument({ ...editingDocument, denominacion_numerica: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-tipo">Tipo</Label>
-            <Select
-              value={editingDocument.tipo_documento.toLowerCase()}
-              onValueChange={(value: "libros" | "libros_anillados" | "azs") =>
-                setEditingDocument({ ...editingDocument, tipo_documento: value.toUpperCase() as "LIBROS" | "LIBROS_ANILLADOS" | "AZS" })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="libros">Libros</SelectItem>
-                <SelectItem value="libros_anillados">Libros Anillados</SelectItem>
-                <SelectItem value="azs">AZS</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="edit-titulo">Título</Label>
-          <Input
-            id="edit-titulo"
-            value={editingDocument.titulo}
-            onChange={(e) => setEditingDocument({ ...editingDocument, titulo: e.target.value })}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-autor">Autor</Label>
-            <Input
-              id="edit-autor"
-              value={editingDocument.autor}
-              onChange={(e) => setEditingDocument({ ...editingDocument, autor: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-editorial">Editorial</Label>
-            <Input
-              id="edit-editorial"
-              value={editingDocument.editorial}
-              onChange={(e) => setEditingDocument({ ...editingDocument, editorial: e.target.value })}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-año">Año</Label>
-            <Input
-              id="edit-año"
-              value={editingDocument.año}
-              onChange={(e) => setEditingDocument({ ...editingDocument, año: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-pais">País</Label>
-            <Input
-              id="edit-pais"
-              value={editingDocument.pais}
-              onChange={(e) => setEditingDocument({ ...editingDocument, pais: e.target.value })}
-            />
-          </div>
-        </div>
-
-        {/* Sección de Tomos para edición */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <Label>Tomos</Label>
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={() => handleAddTomoEdit()}
-              className="flex items-center gap-1"
-            >
-              <Plus className="h-4 w-4" /> Agregar tomo
-            </Button>
-          </div>
-          
-          <div className="space-y-4">
-            {editingDocument.tomos.map((tomo, index) => (
-              <div key={index} className="border rounded-lg p-4 flex flex-col gap-3 relative">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                  onClick={() => handleRemoveTomoEdit(index)}
-                  disabled={editingDocument.tomos.length <= 1}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Documento</DialogTitle>
+            <DialogDescription>Modifica la información del documento y sus tomos</DialogDescription>
+          </DialogHeader>
+          {editingDocument && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`edit-tomo-numero-${index}`}>Número de Tomo</Label>
+                  <Label htmlFor="edit-codigo">Código</Label>
                   <Input
-                    id={`edit-tomo-numero-${index}`}
-                    type="number"
-                    value={tomo.numero}
-                    onChange={(e) => handleTomoNumberChangeEdit(index, e.target.value)}
-                    placeholder="Número de tomo"
-                    min={1}
+                    id="edit-codigo"
+                    value={editingDocument.denominacion_numerica}
+                    onChange={(e) => setEditingDocument({ ...editingDocument, denominacion_numerica: e.target.value })}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label>Archivo PDF</Label>
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
-                    <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        {tomo.archivo ? `Archivo actual: ${tomo.archivo}` : "Ningún archivo seleccionado"}
-                      </p>
-                      <Input
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => handleTomoFileChangeEdit(index, e.target.files?.[0] || null)}
-                        className="max-w-xs mx-auto"
-                      />
-                    </div>
-                  </div>
+                  <Label htmlFor="edit-tipo">Tipo</Label>
+                  <Select
+                    value={editingDocument.tipo_documento.toLowerCase()}
+                    onValueChange={(value: "libros" | "libros_anillados" | "azs") =>
+                      setEditingDocument({ ...editingDocument, tipo_documento: value.toUpperCase() as "LIBROS" | "LIBROS_ANILLADOS" | "AZS" })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="libros">Libros</SelectItem>
+                      <SelectItem value="libros_anillados">Libros Anillados</SelectItem>
+                      <SelectItem value="azs">AZS</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )}
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-        Cancelar
-      </Button>
-      <Button onClick={handleSaveEdit}>Guardar Cambios</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-titulo">Título</Label>
+                <Input
+                  id="edit-titulo"
+                  value={editingDocument.titulo}
+                  onChange={(e) => setEditingDocument({ ...editingDocument, titulo: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-autor">Autor</Label>
+                  <Input
+                    id="edit-autor"
+                    value={editingDocument.autor}
+                    onChange={(e) => setEditingDocument({ ...editingDocument, autor: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-editorial">Editorial</Label>
+                  <Input
+                    id="edit-editorial"
+                    value={editingDocument.editorial}
+                    onChange={(e) => setEditingDocument({ ...editingDocument, editorial: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-año">Año</Label>
+                  <Input
+                    id="edit-año"
+                    value={editingDocument.año}
+                    onChange={(e) => setEditingDocument({ ...editingDocument, año: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-pais">País</Label>
+                  <Input
+                    id="edit-pais"
+                    value={editingDocument.pais}
+                    onChange={(e) => setEditingDocument({ ...editingDocument, pais: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Sección de Tomos para edición */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <Label>Tomos</Label>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => handleAddTomoEdit()}
+                    className="flex items-center gap-1"
+                  >
+                    <Plus className="h-4 w-4" /> Agregar tomo
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {editingDocument.tomos.map((tomo, index) => (
+                    <div key={tomo.id} className="border rounded-lg p-4 flex flex-col gap-3 relative">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                        onClick={() => handleRemoveTomoEdit(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`edit-tomo-numero-${index}`}>Número de Tomo</Label>
+                        <Input
+                          id={`edit-tomo-numero-${index}`}
+                          type="number"
+                          value={tomo.numero}
+                          onChange={(e) => handleTomoNumberChangeEdit(index, e.target.value)}
+                          placeholder="Número de tomo"
+                          min={1}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Archivo PDF</Label>
+                        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center">
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                              {tomo.archivo ? `Archivo actual: ${tomo.archivo}` : "Ningún archivo seleccionado"}
+                            </p>
+                            <Input
+                              type="file"
+                              accept=".pdf"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                // Validación de tipo de archivo
+                                if (file && file.type !== 'application/pdf') {
+                                  alert('Solo se permiten archivos PDF');
+                                  e.target.value = ''; // Limpiar input
+                                  return;
+                                }
+                                handleTomoFileChangeEdit(index, file || null);
+                              }}
+                              className="max-w-xs mx-auto"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>Guardar Cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
