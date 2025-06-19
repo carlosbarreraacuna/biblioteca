@@ -38,20 +38,14 @@ import {
   Legend,
   Pie,
 } from "recharts"
+import { useEffect, useState } from "react"
+import axios from "@/lib/axios"
 
 // Datos de ejemplo para gráficos
 const documentosPorTipo = [
   { tipo: "Libros", cantidad: 156, porcentaje: 52 },
   { tipo: "Libros Anillados", cantidad: 89, porcentaje: 30 },
   { tipo: "AZS", cantidad: 54, porcentaje: 18 },
-]
-
-const documentosPorDenominacion = [
-  { denominacion: "MI", nombre: "Memoria Institucional", cantidad: 45, color: "#3B82F6" },
-  { denominacion: "CG", nombre: "Colección General", cantidad: 128, color: "#10B981" },
-  { denominacion: "J", nombre: "Jurídico", cantidad: 67, color: "#8B5CF6" },
-  { denominacion: "R", nombre: "Revistas", cantidad: 34, color: "#F59E0B" },
-  { denominacion: "H", nombre: "Hemeroteca", cantidad: 25, color: "#EF4444" },
 ]
 
 const actividadMensual = [
@@ -131,6 +125,63 @@ const actividadReciente = [
 const COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444"]
 
 export default function Dashboard() {
+  // Estado para documentos por denominación
+  const [documentosPorDenominacion, setDocumentosPorDenominacion] = useState<any[]>([])
+  const [loadingDenominacion, setLoadingDenominacion] = useState(true)
+  const [errorDenominacion, setErrorDenominacion] = useState<string | null>(null)
+  useEffect(() => {
+    axios
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/denominaciones`)
+      .then((res) => {
+        const arr = res.data.denominaciones || [];
+        const counts: Record<string, number> = {};
+        arr.forEach((den: string) => {
+          counts[den] = (counts[den] || 0) + 1;
+        });
+        // Agrega la propiedad name igual a denominacion
+        const data = Object.entries(counts).map(([denominacion, cantidad]) => ({
+          denominacion,
+          cantidad,
+          name: denominacion,
+        }));
+        setDocumentosPorDenominacion(data);
+        setLoadingDenominacion(false);
+      })
+      .catch((err) => {
+        setErrorDenominacion(err.message);
+        setLoadingDenominacion(false);
+      });
+  }, []);
+
+  // Estado para documentos por tipo
+  const [documentosPorTipo, setDocumentosPorTipo] = useState<any[]>([])
+  const [loadingTipo, setLoadingTipo] = useState(true)
+  const [errorTipo, setErrorTipo] = useState<string | null>(null)
+
+  useEffect(() => {
+    axios
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/tipos`)
+      .then((res) => {
+        const arr = res.data.tipos_documento || [];
+        const counts: Record<string, number> = {};
+        arr.forEach((tipo: string) => {
+          counts[tipo] = (counts[tipo] || 0) + 1;
+        });
+        const data = Object.entries(counts).map(([tipo, cantidad]) => ({
+          tipo,
+          cantidad,
+          name: tipo,
+        }));
+        console.log("documentosPorTipo:", data);
+        setDocumentosPorTipo(data);
+        setLoadingTipo(false);
+      })
+      .catch((err) => {
+        setErrorTipo(err.message);
+        setLoadingTipo(false);
+      });
+  }, []);
+
   const getActionIcon = (tipo: string) => {
     switch (tipo) {
       case "crear":
@@ -282,25 +333,31 @@ export default function Dashboard() {
             <CardDescription>Distribución de documentos por categoría</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <RechartsPieChart>
-                <Pie
-                  data={documentosPorDenominacion}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="cantidad"
-                  label={({ denominacion, cantidad }) => `${denominacion}: ${cantidad}`}
-                >
-                  {documentosPorDenominacion.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </RechartsPieChart>
-            </ResponsiveContainer>
+            {loadingDenominacion ? (
+              <div className="text-center py-10">Cargando...</div>
+            ) : errorDenominacion ? (
+              <div className="text-center text-red-500 py-10">{errorDenominacion}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={documentosPorDenominacion}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="cantidad"
+                    label={({ denominacion, cantidad }) => `${denominacion}: ${cantidad}`}
+                  >
+                    {Array.isArray(documentosPorDenominacion) && documentosPorDenominacion.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -324,15 +381,21 @@ export default function Dashboard() {
                 <CardDescription>Distribución de documentos según su tipo</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={documentosPorTipo}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="tipo" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {loadingTipo ? (
+                  <div className="text-center py-10">Cargando...</div>
+                ) : errorTipo ? (
+                  <div className="text-center text-red-500 py-10">{errorTipo}</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={documentosPorTipo}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="tipo" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
