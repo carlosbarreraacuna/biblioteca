@@ -1003,9 +1003,53 @@ export default function AuditoriaPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label className="font-medium">Detalles</Label>
-                <p className="text-sm bg-muted p-2 rounded">
-                  {JSON.stringify(JSON.parse(selectedLog.detalles || "{}"), null, 2)}
-                </p>
+                {(() => {
+                  let detallesObj: any = {};
+                  try {
+                    detallesObj = JSON.parse(selectedLog.detalles || '{}');
+                  } catch {
+                    detallesObj = {};
+                  }
+                  const antes = detallesObj['antes'] || {};
+                  const despues = detallesObj['después'] || {};
+                  const tomos = detallesObj['tomos'];
+                  const allKeys = Array.from(new Set([  
+                    ...Object.keys(antes),
+                    ...Object.keys(despues)
+                  ]));
+                  return (
+                    <ul className="text-sm bg-muted p-2 rounded space-y-1">
+                      {allKeys.length === 0 && (
+                        <li className="text-muted-foreground">Sin detalles</li>
+                      )}
+                      {allKeys.map((key) => {
+                        const isDateField = key === 'created_at' || key === 'updated_at';
+                        const antesValue = antes[key];
+                        const despuesValue = despues[key];
+                        return (
+                          <li key={key} className="flex gap-2 items-center">
+                            <span className="font-semibold capitalize min-w-[120px]">{key.replace(/_/g, ' ')}:</span>
+                            <span className="text-blue-700">
+                              {isDateField && antesValue ? formatColombiaTime(antesValue) : (antesValue !== undefined ? antesValue.toString() : '-')}
+                            </span>
+                            <span className="mx-2 text-gray-400">→</span>
+                            <span className="text-green-700">
+                              {isDateField && despuesValue ? formatColombiaTime(despuesValue) : (despuesValue !== undefined ? despuesValue.toString() : '-')}
+                            </span>
+                          </li>
+                        );
+                      })}
+                      {tomos !== undefined && (
+                        <li className="flex gap-2">
+                          <span className="font-semibold capitalize min-w-[120px]">Tomos:</span>
+                          <span className="text-blue-700">-</span>
+                          <span className="mx-2 text-gray-400">→</span>
+                          <span className="text-green-700">{tomos}</span>
+                        </li>
+                      )}
+                    </ul>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
