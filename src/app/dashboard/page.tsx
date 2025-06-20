@@ -182,6 +182,34 @@ export default function Dashboard() {
       });
   }, []);
 
+  // Estado para actividad mensual (solo registros)
+  const [actividadRegistros, setActividadRegistros] = useState<any[]>([])
+  const [loadingActividad, setLoadingActividad] = useState(true)
+  const [errorActividad, setErrorActividad] = useState<string | null>(null)
+
+  useEffect(() => {
+    axios
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/actividad-mensual`)
+      .then((res) => {
+        // Agrupar registros por mes
+        const registros = res.data.registros || [];
+        const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+        const agrupado: { [key: string]: number } = {};
+        registros.forEach((r: { fecha: string, total: number }) => {
+          const mes = meses[new Date(r.fecha).getMonth()];
+          agrupado[mes] = (agrupado[mes] || 0) + r.total;
+        });
+        // Convertir a array ordenado por mes
+        const datosPorMes = meses.map((mes) => ({ mes, total: agrupado[mes] || 0 }));
+        setActividadRegistros(datosPorMes);
+        setLoadingActividad(false);
+      })
+      .catch((err) => {
+        setErrorActividad(err.message)
+        setLoadingActividad(false)
+      })
+  }, [])
+
   const getActionIcon = (tipo: string) => {
     switch (tipo) {
       case "crear":
@@ -293,33 +321,34 @@ export default function Dashboard() {
             <CardDescription>Documentos registrados y consultas por mes</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={actividadMensual}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Area
-                  type="monotone"
-                  dataKey="documentos"
-                  stackId="1"
-                  stroke="#3B82F6"
-                  fill="#3B82F6"
-                  fillOpacity={0.6}
-                  name="Documentos"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="consultas"
-                  stackId="2"
-                  stroke="#10B981"
-                  fill="#10B981"
-                  fillOpacity={0.6}
-                  name="Consultas"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {loadingActividad ? (
+              <div className="text-center py-10">Cargando...</div>
+            ) : errorActividad ? (
+              <div className="text-center text-red-500 py-10">{errorActividad}</div>
+            ) : actividadRegistros.length === 0 ? (
+              <div className="text-center py-10">Sin datos para mostrar</div>
+            ) : (
+              <div>
+                {(() => { console.log('actividadRegistros:', actividadRegistros); return null; })()}
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={actividadRegistros}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="mes" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="total"
+                      stroke="#3B82F6"
+                      strokeWidth={3}
+                      dot={{ fill: "#3B82F6", strokeWidth: 2, r: 6 }}
+                      name="Registros"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
