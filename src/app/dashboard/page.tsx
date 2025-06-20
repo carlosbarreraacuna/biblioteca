@@ -391,277 +391,58 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Tabs con más información */}
-      <Tabs defaultValue="estadisticas" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="estadisticas">Estadísticas Detalladas</TabsTrigger>
-          <TabsTrigger value="actividad">Actividad Reciente</TabsTrigger>
-          <TabsTrigger value="usuarios">Usuarios Activos</TabsTrigger>
-          <TabsTrigger value="tendencias">Tendencias</TabsTrigger>
-        </TabsList>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Documentos por tipo */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Documentos por Tipo</CardTitle>
+            <CardDescription>Distribución de documentos según su tipo</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingTipo ? (
+              <div className="text-center py-10">Cargando...</div>
+            ) : errorTipo ? (
+              <div className="text-center text-red-500 py-10">{errorTipo}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={documentosPorTipo}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="tipo" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Tab de estadísticas */}
-        <TabsContent value="estadisticas" className="space-y-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Documentos por tipo */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Documentos por Tipo</CardTitle>
-                <CardDescription>Distribución de documentos según su tipo</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingTipo ? (
-                  <div className="text-center py-10">Cargando...</div>
-                ) : errorTipo ? (
-                  <div className="text-center text-red-500 py-10">{errorTipo}</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={documentosPorTipo}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="tipo" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+        {/* Documentos por año */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Documentos por Año de Publicación</CardTitle>
+            <CardDescription>Distribución temporal de los documentos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={documentosPorAño}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="año" />
+                <YAxis />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="cantidad"
+                  stroke="#10B981"
+                  strokeWidth={3}
+                  dot={{ fill: "#10B981", strokeWidth: 2, r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
-            {/* Documentos por año */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Documentos por Año de Publicación</CardTitle>
-                <CardDescription>Distribución temporal de los documentos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={documentosPorAño}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="año" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="cantidad"
-                      stroke="#10B981"
-                      strokeWidth={3}
-                      dot={{ fill: "#10B981", strokeWidth: 2, r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Métricas adicionales */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tasa de Digitalización</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">94.2%</div>
-                <Progress value={94.2} className="mt-2" />
-                <p className="text-xs text-muted-foreground mt-2">1,162 de 1,234 documentos digitalizados</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Promedio Diario</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">12.3</div>
-                <p className="text-xs text-muted-foreground">documentos registrados por día</p>
-                <div className="flex items-center mt-2">
-                  <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
-                  <span className="text-xs text-green-600">+15% vs mes anterior</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tiempo Promedio</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">8.5 min</div>
-                <p className="text-xs text-muted-foreground">por registro de documento</p>
-                <div className="flex items-center mt-2">
-                  <Award className="h-4 w-4 text-blue-600 mr-1" />
-                  <span className="text-xs text-blue-600">Eficiencia mejorada</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Tab de actividad reciente */}
-        <TabsContent value="actividad">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Actividad Reciente
-              </CardTitle>
-              <CardDescription>Últimas acciones realizadas en el sistema</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {actividadReciente.map((actividad) => (
-                  <div key={actividad.id} className="flex items-center space-x-4 p-3 rounded-lg border">
-                    <div className="flex-shrink-0">{getActionIcon(actividad.tipo)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900">{actividad.usuario}</p>
-                        <Badge className={getActionBadge(actividad.tipo)}>{actividad.accion}</Badge>
-                      </div>
-                      <p className="text-sm text-gray-500 truncate">{actividad.detalle}</p>
-                    </div>
-                    <div className="flex-shrink-0 text-xs text-gray-400">{actividad.tiempo}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab de usuarios activos */}
-        <TabsContent value="usuarios">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Usuarios Más Activos
-              </CardTitle>
-              <CardDescription>Ranking de usuarios por actividad en el sistema</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {usuariosActivos.map((usuario, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary">{index + 1}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{usuario.nombre}</p>
-                        <p className="text-xs text-muted-foreground">{usuario.ultimaActividad}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex gap-4 text-sm">
-                        <div>
-                          <span className="font-medium text-blue-600">{usuario.documentos}</span>
-                          <span className="text-muted-foreground ml-1">docs</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-green-600">{usuario.consultas}</span>
-                          <span className="text-muted-foreground ml-1">consultas</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab de tendencias */}
-        <TabsContent value="tendencias">
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Tendencias de Crecimiento
-                </CardTitle>
-                <CardDescription>Análisis de crecimiento y proyecciones</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
-                  <LineChart data={actividadMensual}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="mes" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="documentos"
-                      stroke="#3B82F6"
-                      strokeWidth={2}
-                      name="Documentos Registrados"
-                    />
-                    <Line type="monotone" dataKey="usuarios" stroke="#10B981" strokeWidth={2} name="Usuarios Activos" />
-                    <Line type="monotone" dataKey="consultas" stroke="#8B5CF6" strokeWidth={2} name="Consultas" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Alertas y recomendaciones */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-orange-600">
-                    <AlertCircle className="h-5 w-5" />
-                    Alertas del Sistema
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
-                    <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Espacio de almacenamiento</p>
-                      <p className="text-xs text-muted-foreground">85% del espacio utilizado</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                    <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Documentos pendientes</p>
-                      <p className="text-xs text-muted-foreground">12 documentos sin digitalizar</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-green-600">
-                    <Award className="h-5 w-5" />
-                    Logros del Mes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-                    <Award className="h-4 w-4 text-green-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Meta de digitalización</p>
-                      <p className="text-xs text-muted-foreground">Superada en un 120%</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-                    <Award className="h-4 w-4 text-purple-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Usuarios más activos</p>
-                      <p className="text-xs text-muted-foreground">Incremento del 25% en participación</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }
